@@ -7,6 +7,6 @@ public interface IEventService
     List<Event> GetEvents();
     Event? GetEventById(Guid id);
     void CreateEvent(Event newEvent);
-    Event? UpdateEvent(Event updatedEvent);
+    Event? UpdateEvent(Guid id, Event updatedEvent);
     bool DeleteEvent(Guid id);
 }

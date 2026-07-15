@@ -14,9 +14,9 @@ public class EventService : IEventService
 
     public void CreateEvent(Event newEvent) => Events.Add(newEvent);
 
-    public Event? UpdateEvent(Event updatedEvent)
+    public Event? UpdateEvent(Guid id, Event updatedEvent)
     {
-        var index = Events.FindIndex(x => x.Id == updatedEvent.Id);
+        var index = Events.FindIndex(x => x.Id == id);
         
         if (index == -1)
             return null;

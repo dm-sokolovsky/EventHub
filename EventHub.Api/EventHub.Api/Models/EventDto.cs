@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace EventHub.Api;
 
 /// <summary>
@@ -26,8 +28,17 @@ public record EventDto
 /// <param name="EndAt">Дата и время окончания</param>
 public record EventCreatedDto
 (
-    string Title,
+    [Required(ErrorMessage = "Title is required")] string Title,
     string? Description,
-    DateTime StartAt,
-    DateTime EndAt
-);
+    [Required(ErrorMessage = "Start At is required")] DateTime StartAt,
+    [Required(ErrorMessage = "End At is required")] DateTime EndAt
+) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (EndAt <= StartAt)
+            yield return new ValidationResult(
+                "EndAt должен быть позже StartAt",
+                [nameof(EndAt), nameof(StartAt)]);
+    }
+}

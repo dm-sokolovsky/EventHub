@@ -10,7 +10,7 @@ namespace EventHub.Api.Controllers;
 /// </summary>
 /// <param name="eventService"></param>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/events")]
 public class EventsController(IEventService  eventService): ControllerBase
 {
     /// <summary>
@@ -74,16 +74,6 @@ public class EventsController(IEventService  eventService): ControllerBase
                 Message = "Получаем событие по id из коллекции"
             };
         }
-        catch (ArgumentOutOfRangeException ex)
-        {
-            // В случае ошибки возвращаем неуспешный результат со статусом Not Found
-            return new ApiBaseResult
-            {
-                Success = false,
-                StatusCode = HttpStatusCode.NotFound,
-                Message = $"Не удалось найти событие по {id}"
-            };
-        }
         catch (Exception ex)
         {
             return new ApiBaseResult
@@ -101,10 +91,10 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <param name="eventDto">Параметр eventDto, для добавления нового события в коллекцию</param>
     /// <response code="201">Возвращается JSON-структура ApiResult с деталями ответа</response>
     /// <returns></returns>
-    [ProducesResponseType(typeof(ApiResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult), StatusCodes.Status201Created)]
     [Produces("application/json")]
     [HttpPost]
-    public ApiBaseResult CreateEvent(EventCreatedDto eventDto)
+    public ApiBaseResult CreateEvent([FromBody] EventCreatedDto eventDto)
     {
         eventService.CreateEvent(MapEvent(eventDto));
         
@@ -128,7 +118,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpPut("{id}")]
-    public ApiBaseResult UpdateEvent(Guid id, EventCreatedDto eventDto)
+    public ApiBaseResult UpdateEvent(Guid id, [FromBody] EventCreatedDto eventDto)
     {
         var result = eventService.UpdateEvent(id, MapEvent(eventDto));
         

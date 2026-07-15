@@ -21,6 +21,8 @@ public class EventService : IEventService
         if (index == -1)
             return null;
 
+        updatedEvent.Id = id;
+        
         Events[index] = updatedEvent;
         return updatedEvent;
     }

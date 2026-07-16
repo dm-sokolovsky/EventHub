@@ -1,4 +1,5 @@
 using System.Net;
+using EventHub.Api.Common;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<List<EventDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
-    public ApiResult<List<EventDto>> GetAllEvents()
+    public IActionResult GetAllEvents()
     {
         var result = eventService.GetEvents()
             .Select(MapEventDto)
@@ -33,7 +34,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Получаем все события"
-        };
+        }.ToActionResult();
     }
     
     /// <summary>
@@ -49,7 +50,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet("{id}")]
-    public ApiBaseResult GetEventById(Guid id)
+    public IActionResult GetEventById(Guid id)
     {
         try
         {
@@ -63,7 +64,7 @@ public class EventsController(IEventService  eventService): ControllerBase
                     Success = true,
                     StatusCode = HttpStatusCode.NotFound,
                     Message = $"Не удалось найти событие по {id}"
-                };
+                }.ToActionResult();
             }
 
             return new ApiResult<EventDto>
@@ -72,7 +73,7 @@ public class EventsController(IEventService  eventService): ControllerBase
                 Success = true,
                 StatusCode = HttpStatusCode.OK,
                 Message = "Получаем событие по id из коллекции"
-            };
+            }.ToActionResult();
         }
         catch (Exception ex)
         {
@@ -81,7 +82,7 @@ public class EventsController(IEventService  eventService): ControllerBase
                 Success = false,
                 StatusCode = HttpStatusCode.InternalServerError,
                 Message = $"Необработанное исключение: {ex.Message}"
-            };
+            }.ToActionResult();
         }
     }
 
@@ -94,7 +95,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult), StatusCodes.Status201Created)]
     [Produces("application/json")]
     [HttpPost]
-    public ApiBaseResult CreateEvent([FromBody] EventCreatedDto eventDto)
+    public IActionResult CreateEvent([FromBody] EventCreatedDto eventDto)
     {
         eventService.CreateEvent(MapEvent(eventDto));
         
@@ -103,7 +104,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             Success = true,
             StatusCode = HttpStatusCode.Created,
             Message = "Добавляем событие в коллекцию и возвращаем HTTP 201 Created"
-        };
+        }.ToActionResult();
     }
 
     /// <summary>
@@ -118,7 +119,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpPut("{id}")]
-    public ApiBaseResult UpdateEvent(Guid id, [FromBody] EventCreatedDto eventDto)
+    public IActionResult UpdateEvent(Guid id, [FromBody] EventCreatedDto eventDto)
     {
         var result = eventService.UpdateEvent(id, MapEvent(eventDto));
         
@@ -129,7 +130,7 @@ public class EventsController(IEventService  eventService): ControllerBase
                 Success = true,
                 StatusCode = HttpStatusCode.NotFound,
                 Message = $"Не удалось найти событие по {id}"
-            };
+            }.ToActionResult();
         }
         
         return new ApiResult<EventDto>
@@ -138,7 +139,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Меняем событие в коллекции по id"
-        };
+        }.ToActionResult();
     }
 
     /// <summary>
@@ -152,7 +153,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpDelete("{id}")]
-    public ApiBaseResult DeleteEvent(Guid id)
+    public IActionResult DeleteEvent(Guid id)
     {
         var success = eventService.DeleteEvent(id);
 
@@ -163,7 +164,7 @@ public class EventsController(IEventService  eventService): ControllerBase
                 Success = true,
                 StatusCode = HttpStatusCode.NotFound,
                 Message = $"Не удалось найти событие по {id}"
-            };
+            }.ToActionResult();
         }
         
         return new ApiBaseResult()
@@ -171,7 +172,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Удаляем событие из коллекции и возвращаем HTTP 200 OK"
-        };
+        }.ToActionResult();
     }
 
 

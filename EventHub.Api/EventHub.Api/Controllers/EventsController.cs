@@ -61,7 +61,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             {
                 return new ApiBaseResult
                 {
-                    Success = true,
+                    Success = false,
                     StatusCode = HttpStatusCode.NotFound,
                     Message = $"Не удалось найти событие по {id}"
                 }.ToActionResult();
@@ -127,7 +127,7 @@ public class EventsController(IEventService  eventService): ControllerBase
         {
             return new ApiBaseResult
             {
-                Success = true,
+                Success = false,
                 StatusCode = HttpStatusCode.NotFound,
                 Message = $"Не удалось найти событие по {id}"
             }.ToActionResult();
@@ -161,7 +161,7 @@ public class EventsController(IEventService  eventService): ControllerBase
         {
             return new ApiBaseResult
             {
-                Success = true,
+                Success = false,
                 StatusCode = HttpStatusCode.NotFound,
                 Message = $"Не удалось найти событие по {id}"
             }.ToActionResult();
@@ -170,8 +170,8 @@ public class EventsController(IEventService  eventService): ControllerBase
         return new ApiBaseResult()
         {
             Success = true,
-            StatusCode = HttpStatusCode.OK,
-            Message = "Удаляем событие из коллекции и возвращаем HTTP 200 OK"
+            StatusCode = HttpStatusCode.NoContent,
+            Message = "Удаляем событие из коллекции и возвращаем"
         }.ToActionResult();
     }
 

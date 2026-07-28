@@ -22,9 +22,9 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<List<EventDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
-    public IActionResult GetAllEvents([FromQuery] GetEventsDto getEventsDto)
+    public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto)
     {
-        var result = eventService.GetEvents(MapEventFilter(getEventsDto))
+        var result = eventService.GetEvents(MapEventFilter(eventFilterDto))
             .Select(MapEventDto)
             .ToList();
         
@@ -176,12 +176,12 @@ public class EventsController(IEventService  eventService): ControllerBase
     }
 
 
-    private Event MapEvent(EventCreatedDto eventDto) 
-        => new Event(eventDto.Title, eventDto.Description, eventDto.StartAt, eventDto.EndAt);
+    private Event MapEvent(EventCreatedDto @eventDto) 
+        => new Event(@eventDto.Title, @eventDto.Description, @eventDto.StartAt, @eventDto.EndAt);
 
     private EventDto MapEventDto(Event @event) 
         => new EventDto(@event.Id, @event.Title, @event.Description, @event.StartAt, @event.EndAt);
 
-    private EventFilter MapEventFilter(GetEventsDto getEventsDto) =>
-        new EventFilter(getEventsDto.Title, getEventsDto.From, getEventsDto.To);
+    private EventFilter MapEventFilter(EventFilterDto @eventFilterDto) =>
+        new EventFilter(@eventFilterDto.Title, @eventFilterDto.From, @eventFilterDto.To);
 }

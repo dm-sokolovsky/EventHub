@@ -49,7 +49,7 @@ public record EventCreatedDto
 /// <param name="Title">Поиск по названию (регистронезависимый, частичное совпадение) </param>
 /// <param name="From">События, которые начинаются не раньше указанной даты</param>
 /// <param name="To">События, которые заканчиваются не позже указанной даты</param>
-public record GetEventsDto
+public record EventFilterDto
 (
     string? Title,
     DateTime? From,

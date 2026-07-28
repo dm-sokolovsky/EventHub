@@ -1,4 +1,5 @@
 using EventHub.Api.Models;
+using EventHub.Api.Extensions;
 
 namespace EventHub.Api.Services;
 
@@ -7,8 +8,15 @@ public class EventService : IEventService
     
     // Коллекция для манипуляции над событиями
     private static List<Event> Events { get; set; } = [];
+
+    public List<Event> GetEvents(EventFilter eventFilter) =>
+        Events.AsQueryable()
+            .TitleFilter(eventFilter.Title)
+            .FromDateFilter(eventFilter.From)
+            .ToDateFilter(eventFilter.To)
+            .ToList();
     
-    public List<Event> GetEvents() => Events;
+    
 
     public Event? GetEventById(Guid id) => Events.FirstOrDefault(x => x.Id == id);
 

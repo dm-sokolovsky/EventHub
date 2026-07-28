@@ -42,3 +42,16 @@ public record EventCreatedDto
                 [nameof(EndAt), nameof(StartAt)]);
     }
 }
+
+/// <summary>
+/// DTO для фильтрации всех событий  
+/// </summary>
+/// <param name="Title">Поиск по названию (регистронезависимый, частичное совпадение) </param>
+/// <param name="From">События, которые начинаются не раньше указанной даты</param>
+/// <param name="To">События, которые заканчиваются не позже указанной даты</param>
+public record GetEventsDto
+(
+    string? Title,
+    DateTime? From,
+    DateTime? To
+);

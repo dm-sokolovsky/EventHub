@@ -28,13 +28,16 @@ public class EventsController(IEventService  eventService): ControllerBase
             .Select(MapEventDto)
             .ToList();
         
-        return new ApiResult<List<EventDto>>
+        var response = new ApiResult<List<EventDto>>
         {
             Data = result,
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Получаем все события"
-        }.ToActionResult();
+        };
+
+        return response
+            .ToActionResult();
     }
     
     /// <summary>
@@ -52,6 +55,8 @@ public class EventsController(IEventService  eventService): ControllerBase
     [HttpGet("{id}")]
     public IActionResult GetEventById(Guid id)
     {
+        ApiBaseResult response;
+        
         try
         {
             var result = eventService
@@ -59,30 +64,39 @@ public class EventsController(IEventService  eventService): ControllerBase
 
             if (result is null)
             {
-                return new ApiBaseResult
+                response = new ApiBaseResult
                 {
                     Success = false,
                     StatusCode = HttpStatusCode.NotFound,
                     Message = $"Не удалось найти событие по {id}"
-                }.ToActionResult();
-            }
+                };
 
-            return new ApiResult<EventDto>
+                return response
+                    .ToActionResult();
+            }
+            
+            response = new ApiResult<EventDto>
             {
                 Data = MapEventDto(result),
                 Success = true,
                 StatusCode = HttpStatusCode.OK,
                 Message = "Получаем событие по id из коллекции"
-            }.ToActionResult();
+            };
+
+            return response
+                .ToActionResult();
         }
         catch (Exception ex)
         {
-            return new ApiBaseResult
+            response = new ApiBaseResult
             {
                 Success = false,
                 StatusCode = HttpStatusCode.InternalServerError,
                 Message = $"Необработанное исключение: {ex.Message}"
-            }.ToActionResult();
+            };
+            
+            return response
+                .ToActionResult();
         }
     }
 
@@ -99,12 +113,15 @@ public class EventsController(IEventService  eventService): ControllerBase
     {
         eventService.CreateEvent(MapEvent(eventDto));
         
-        return new ApiBaseResult
+        var response = new ApiBaseResult
         {
             Success = true,
             StatusCode = HttpStatusCode.Created,
             Message = "Добавляем событие в коллекцию и возвращаем HTTP 201 Created"
-        }.ToActionResult();
+        };
+
+        return response
+            .ToActionResult();
     }
 
     /// <summary>
@@ -123,23 +140,32 @@ public class EventsController(IEventService  eventService): ControllerBase
     {
         var result = eventService.UpdateEvent(id, MapEvent(eventDto));
         
+        ApiBaseResult response;
+        
+        
         if (result is null)
         {
-            return new ApiBaseResult
+            response = new ApiBaseResult
             {
                 Success = false,
                 StatusCode = HttpStatusCode.NotFound,
                 Message = $"Не удалось найти событие по {id}"
-            }.ToActionResult();
+            };
+
+            return response
+                .ToActionResult();
         }
         
-        return new ApiResult<EventDto>
+        response = new ApiResult<EventDto>
         {
             Data = MapEventDto(result),
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Меняем событие в коллекции по id"
-        }.ToActionResult();
+        };
+
+        return response
+            .ToActionResult();
     }
 
     /// <summary>
@@ -156,23 +182,31 @@ public class EventsController(IEventService  eventService): ControllerBase
     public IActionResult DeleteEvent(Guid id)
     {
         var success = eventService.DeleteEvent(id);
+        
+        ApiBaseResult response;
 
         if (!success)
         {
-            return new ApiBaseResult
+            response = new ApiBaseResult
             {
                 Success = false,
                 StatusCode = HttpStatusCode.NotFound,
                 Message = $"Не удалось найти событие по {id}"
-            }.ToActionResult();
+            };
+            
+            return response
+                .ToActionResult();
         }
-        
-        return new ApiBaseResult()
+
+        response = new ApiBaseResult()
         {
             Success = true,
             StatusCode = HttpStatusCode.NoContent,
             Message = "Удаляем событие из коллекции и возвращаем"
-        }.ToActionResult();
+        };
+        
+        return response
+            .ToActionResult();
     }
 
 

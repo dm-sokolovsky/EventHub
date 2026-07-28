@@ -57,7 +57,7 @@ public class GlobalExceptionHandlingMiddleware
         => ex switch
         {
             ValidationException ve => StatusCodes.Status400BadRequest,
-            NotFoundException => StatusCodes.Status404NotFound,
+            NotFoundException nfe => StatusCodes.Status404NotFound,
             _ => StatusCodes.Status500InternalServerError
         };
 }

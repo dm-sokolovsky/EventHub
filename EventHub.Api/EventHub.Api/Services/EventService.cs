@@ -7,7 +7,7 @@ public class EventService : IEventService
 {
     
     // Коллекция для манипуляции над событиями
-    private static List<Event> Events { get; set; } = [];
+    private static List<Event> Events { get; } = [];
 
     public List<Event> GetEvents(EventFilter eventFilter) =>
         Events.AsQueryable()

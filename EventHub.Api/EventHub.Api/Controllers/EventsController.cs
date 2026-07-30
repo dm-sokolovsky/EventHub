@@ -1,5 +1,7 @@
 using System.Net;
 using EventHub.Api.Common;
+using EventHub.Api.Contracts;
+using EventHub.Api.Extensions;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -22,13 +24,20 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<List<EventDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
-    public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto)
+    public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var result = eventService.GetEvents(MapEventFilter(eventFilterDto))
-            .Select(MapEventDto)
-            .ToList();
+        var eventFilter = eventFilterDto.ToEventFilter();
+
+        var (events, totalCount) = eventService.GetEvents(eventFilter, page, pageSize);
+        var eventDtos = events.Select(e => e.ToDto()).ToList();
+
+        var result = new PaginatedResult(
+            totalCount,
+            eventDtos,
+            page,
+            pageSize);
         
-        var response = new ApiResult<List<EventDto>>
+        var response = new ApiResult<PaginatedResult>
         {
             Data = result,
             Success = true,
@@ -77,7 +86,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             
             response = new ApiResult<EventDto>
             {
-                Data = MapEventDto(result),
+                Data = result.ToDto(),
                 Success = true,
                 StatusCode = HttpStatusCode.OK,
                 Message = "Получаем событие по id из коллекции"
@@ -109,9 +118,9 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult), StatusCodes.Status201Created)]
     [Produces("application/json")]
     [HttpPost]
-    public IActionResult CreateEvent([FromBody] EventCreatedDto eventDto)
+    public IActionResult CreateEvent([FromBody] EventUpsertDto eventDto)
     {
-        eventService.CreateEvent(MapEvent(eventDto));
+        eventService.CreateEvent(eventDto.ToEvent());
         
         var response = new ApiBaseResult
         {
@@ -136,9 +145,9 @@ public class EventsController(IEventService  eventService): ControllerBase
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpPut("{id}")]
-    public IActionResult UpdateEvent(Guid id, [FromBody] EventCreatedDto eventDto)
+    public IActionResult UpdateEvent(Guid id, [FromBody] EventUpsertDto eventDto)
     {
-        var result = eventService.UpdateEvent(id, MapEvent(eventDto));
+        var result = eventService.UpdateEvent(id, eventDto.ToEvent());
         
         ApiBaseResult response;
         
@@ -158,7 +167,7 @@ public class EventsController(IEventService  eventService): ControllerBase
         
         response = new ApiResult<EventDto>
         {
-            Data = MapEventDto(result),
+            Data = result.ToDto(),
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Меняем событие в коллекции по id"
@@ -208,14 +217,4 @@ public class EventsController(IEventService  eventService): ControllerBase
         return response
             .ToActionResult();
     }
-
-
-    private Event MapEvent(EventCreatedDto @eventDto) 
-        => new Event(@eventDto.Title, @eventDto.Description, @eventDto.StartAt, @eventDto.EndAt);
-
-    private EventDto MapEventDto(Event @event) 
-        => new EventDto(@event.Id, @event.Title, @event.Description, @event.StartAt, @event.EndAt);
-
-    private EventFilter MapEventFilter(EventFilterDto @eventFilterDto) =>
-        new EventFilter(@eventFilterDto.Title, @eventFilterDto.From, @eventFilterDto.To);
 }

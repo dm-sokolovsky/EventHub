@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace EventHub.Api;
+namespace EventHub.Api.Contracts;
 
 /// <summary>
 /// DTO для отображения события
@@ -20,13 +20,13 @@ public record EventDto
 );
 
 /// <summary>
-/// DTO для создания события
+/// DTO для создания и обновления события
 /// </summary>
 /// <param name="Title">Название события</param>
 /// <param name="Description">Описание события (опционально)</param>
 /// <param name="StartAt">Дата и время начала</param>
 /// <param name="EndAt">Дата и время окончания</param>
-public record EventCreatedDto
+public record EventUpsertDto
 (
     [Required(ErrorMessage = "Title is required")] string Title,
     string? Description,
@@ -44,7 +44,7 @@ public record EventCreatedDto
 }
 
 /// <summary>
-/// DTO для фильтрации всех событий  
+/// DTO для фильтрации всех событий
 /// </summary>
 /// <param name="Title">Поиск по названию (регистронезависимый, частичное совпадение) </param>
 /// <param name="From">События, которые начинаются не раньше указанной даты</param>

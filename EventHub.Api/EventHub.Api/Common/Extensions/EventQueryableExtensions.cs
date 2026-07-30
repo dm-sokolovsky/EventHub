@@ -29,4 +29,8 @@ public static class EventQueryableExtensions
 
         return queryable.Where(e => e.EndAt <= date);
     }
+    
+    public static IQueryable<Event> Page(this IQueryable<Event> queryable, int page, int pageSize) => queryable
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
 }

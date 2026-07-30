@@ -9,14 +9,20 @@ public class EventService : IEventService
     // Коллекция для манипуляции над событиями
     private static List<Event> Events { get; } = [];
 
-    public List<Event> GetEvents(EventFilter eventFilter) =>
-        Events.AsQueryable()
+    public (List<Event> Items, int TotalCount) GetEvents(EventFilter eventFilter, int page, int pageSize)
+    {
+        var filtered = Events.AsQueryable()
             .TitleFilter(eventFilter.Title)
             .FromDateFilter(eventFilter.From)
-            .ToDateFilter(eventFilter.To)
-            .ToList();
-    
-    
+            .ToDateFilter(eventFilter.To);
+
+        var totalCount = filtered.Count();
+        var items = filtered.Page(page, pageSize).ToList();
+
+        return (items, totalCount);
+    }
+
+
 
     public Event? GetEventById(Guid id) => Events.FirstOrDefault(x => x.Id == id);
 

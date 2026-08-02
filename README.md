@@ -19,6 +19,30 @@ dotnet run --project EventHub.Api/EventHub.Api
 
 По умолчанию API поднимется на `https://localhost:xxxx` (порт см. в `launchSettings.json` или в выводе консоли при старте). Swagger UI доступен по адресу `/swagger`, если подключён в проекте.
 
+## Тесты
+
+```bash
+dotnet test EventHub.Api/EventHub.Api.sln
+```
+
+Прогоняет оба тестовых проекта разом:
+
+- `EventHub.Tests` — юнит-тесты `EventService` (CRUD, фильтрация, пагинация, валидация DTO);
+- `EventHub.IntegrationTests` — HTTP-тесты через `WebApplicationFactory<Program>` (реальные статусы, заголовок `Location`, поведение `[ApiController]`-валидации).
+
+Запустить один тестовый проект:
+
+```bash
+dotnet test EventHub.Api/EventHub.Tests
+dotnet test EventHub.Api/EventHub.IntegrationTests
+```
+
+Запустить один тест по имени:
+
+```bash
+dotnet test EventHub.Api/EventHub.Api.sln --filter "FullyQualifiedName~EventService_UpdateEvent"
+```
+
 ## Модель данных
 
 ### Event
@@ -47,13 +71,31 @@ dotnet run --project EventHub.Api/EventHub.Api
 
 | Метод  | Путь              | Описание                          | Успех            | Ошибка                    |
 |--------|-------------------|-------------------------------------|------------------|----------------------------|
-| GET    | `/events`         | Получить список всех событий        | `200 OK`         | —                          |
+| GET    | `/events`         | Получить список событий (с фильтрацией и пагинацией) | `200 OK` | `400 Bad Request`  |
 | GET    | `/events/{id}`    | Получить событие по `id`            | `200 OK`         | `404 Not Found`            |
 | POST   | `/events`         | Создать новое событие               | `201 Created`    | `400 Bad Request`          |
 | PUT    | `/events/{id}`    | Обновить событие целиком            | `200 OK`         | `404 Not Found` / `400 Bad Request` |
 | DELETE | `/events/{id}`    | Удалить событие                     | `204 No Content` | `404 Not Found`         |
 
 ### Примеры запросов
+
+**Получить события с фильтрацией и пагинацией**
+
+```http
+GET /api/events?title=митинг&from=2026-07-01T00:00:00&to=2026-07-31T23:59:59&page=1&pageSize=10
+```
+
+Параметры query-строки (все опциональны, кроме `page`/`pageSize`, у которых есть значения по умолчанию):
+
+| Параметр   | Тип        | По умолчанию | Описание                                              |
+|------------|------------|--------------|--------------------------------------------------------|
+| `title`    | `string?`  | —            | Частичный, регистронезависимый поиск по названию       |
+| `from`     | `DateTime?`| —            | Событие начинается не раньше указанной даты (`StartAt >= from`) |
+| `to`       | `DateTime?`| —            | Событие заканчивается не позже указанной даты (`EndAt <= to`)   |
+| `page`     | `int`      | `1`          | Номер страницы, должен быть `>= 1`                      |
+| `pageSize` | `int`      | `10`         | Размер страницы, должен быть `>= 1`                     |
+
+При `page < 1` или `pageSize < 1` API возвращает `400 Bad Request`.
 
 **Создать событие**
 

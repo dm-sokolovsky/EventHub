@@ -7,6 +7,12 @@ public class EventService : IEventService
 {
     
     // Коллекция для манипуляции над событиями
+    // TODO: static-состояние расшарено между всеми экземплярами EventService в рамках процесса,
+    // включая параллельные тесты (EventHub.Tests, EventHub.IntegrationTests). Сейчас тесты
+    // изолируются только за счёт Guid.NewGuid()-уникальных Title в фильтрах — это хрупко и не
+    // защищает от коллизий, если тесты когда-нибудь начнут проверять totalCount/список без
+    // фильтра. Нужен либо реальный сброс между тестами (метод EventService.Reset()/новый
+    // инстанс-хранилище вместо static), либо явный DI-скоуп per-test/per-collection.
     private static List<Event> Events { get; } = [];
 
     public (List<Event> Items, int TotalCount) GetEvents(EventFilter eventFilter, int page, int pageSize)

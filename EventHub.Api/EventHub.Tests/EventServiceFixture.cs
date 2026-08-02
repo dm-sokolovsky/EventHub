@@ -3,6 +3,14 @@ using EventHub.Api.Services;
 
 namespace EventHub.Tests;
 
+// TODO: EventService.Events — static (см. EventHub.Api/Services/EventService.cs), поэтому оно
+// расшарено между ВСЕМИ EventService в процессе независимо от этой фикстуры. Events ниже —
+// отдельная, никогда не связанная с EventService коллекция: она нигде не передаётся в
+// EventService (сеттера/конструктора для этого нет), поэтому GetEventById/GetEvents её не видят.
+// Поле сейчас фактически мёртвое — используется только как typed-заглушка в конструкторах
+// тестовых классов (EventServiceTests._events и аналоги), которые сами его тоже не читают.
+// Либо удалить Events отсюда как мёртвый код, либо (если цель — детерминированные seed-данные)
+// реально прокидывать их в EventService после добавления туда способа сброса/сидирования.
 public class EventServiceFixture
 {
     public EventService EventService { get; set; }

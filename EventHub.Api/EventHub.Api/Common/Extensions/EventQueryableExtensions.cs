@@ -8,7 +8,7 @@ public static class EventQueryableExtensions
     {
         if (string.IsNullOrWhiteSpace(title))
             return queryable;
-        
+
         var titleSmall = title.ToLower();
 
         return queryable.Where(e => e.Title.ToLower().Contains(titleSmall));
@@ -21,7 +21,7 @@ public static class EventQueryableExtensions
 
         return queryable.Where(e => e.StartAt >= date);
     }
-    
+
     public static IQueryable<Event> ToDateFilter(this IQueryable<Event> queryable, DateTime? date)
     {
         if (date is null)
@@ -29,7 +29,7 @@ public static class EventQueryableExtensions
 
         return queryable.Where(e => e.EndAt <= date);
     }
-    
+
     public static IQueryable<Event> Page(this IQueryable<Event> queryable, int page, int pageSize) => queryable
             .Skip((page - 1) * pageSize)
             .Take(pageSize);

@@ -73,7 +73,7 @@ public class GlobalExceptionHandlingMiddleware
             await httpContext.Response.WriteAsJsonAsync(error);
         }
     }
-    
+
     private static int MapStatusCode(Exception ex)
         => ex switch
         {

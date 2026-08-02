@@ -30,8 +30,8 @@ public record EventUpsertDto
 (
     [Required(ErrorMessage = "Title is required")] string Title,
     string? Description,
-    [Required(ErrorMessage = "Start At is required")] DateTime StartAt,
-    [Required(ErrorMessage = "End At is required")] DateTime EndAt
+    [Required(ErrorMessage = "Start At is required")] DateTime? StartAt,
+    [Required(ErrorMessage = "End At is required")] DateTime? EndAt
 ) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

@@ -1,5 +1,6 @@
+using System.Net;
 using EventHub.Api.Common.Exceptions;
-using Microsoft.AspNetCore.Mvc;
+using EventHub.Api.Models;
 using ValidationException = EventHub.Api.Common.Exceptions.ValidationException;
 
 namespace EventHub.Api.Common;
@@ -62,10 +63,11 @@ public class GlobalExceptionHandlingMiddleware
             httpContext.Response.StatusCode = statusCode;
             httpContext.Response.ContentType = "application/json";
 
-            var error = new ProblemDetails
+            var error = new ApiBaseResult
             {
-                Status = statusCode,
-                Detail = ex.Message
+                Success = false,
+                StatusCode = (HttpStatusCode)statusCode,
+                Message = ex.Message
             };
 
             await httpContext.Response.WriteAsJsonAsync(error);

@@ -1,6 +1,6 @@
-using System.ComponentModel.DataAnnotations;
 using EventHub.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using ValidationException = EventHub.Api.Common.Exceptions.ValidationException;
 
 namespace EventHub.Api.Common;
 
@@ -26,20 +26,39 @@ public class GlobalExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Unhandled exception. Method={Method}, Path={Path}, RequestId={RequestId}",
-                httpContext.Request.Method,
-                httpContext.Request.Path,
-                httpContext.Request.Headers["x-request-id"]);
-            
             if (httpContext.Response.HasStarted)
             {
+                _logger.LogError(
+                    ex,
+                    "Exception after response started. Method={Method}, Path={Path}, RequestId={RequestId}",
+                    httpContext.Request.Method,
+                    httpContext.Request.Path,
+                    httpContext.Request.Headers["x-request-id"]);
                 return;
             }
 
             var statusCode = MapStatusCode(ex);
-        
+
+            if (statusCode >= StatusCodes.Status500InternalServerError)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unhandled exception. Method={Method}, Path={Path}, RequestId={RequestId}",
+                    httpContext.Request.Method,
+                    httpContext.Request.Path,
+                    httpContext.Request.Headers["x-request-id"]);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Request failed with {StatusCode}: {Message}. Method={Method}, Path={Path}, RequestId={RequestId}",
+                    statusCode,
+                    ex.Message,
+                    httpContext.Request.Method,
+                    httpContext.Request.Path,
+                    httpContext.Request.Headers["x-request-id"]);
+            }
+
             httpContext.Response.StatusCode = statusCode;
             httpContext.Response.ContentType = "application/json";
 

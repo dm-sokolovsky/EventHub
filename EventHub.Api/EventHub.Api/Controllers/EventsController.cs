@@ -20,12 +20,28 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// Метод возвращает все события из коллекции
     /// </summary>
     /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="400">Возвращается JSON-структура ApiBaseResult, если page или pageSize меньше 1</response>
     /// <returns></returns>
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResult<List<EventDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
     public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
+        ApiBaseResult response;
+        
+        if (page < 1 || pageSize < 1)
+        {
+            response = new ApiBaseResult
+            {
+                Success = false,
+                StatusCode = HttpStatusCode.BadRequest,
+                Message = $"page и pageSize должны быть не меньше 1 (page={page}, pageSize={pageSize})"
+            };
+
+            return response.ToActionResult();
+        }
+
         var eventFilter = eventFilterDto.ToEventFilter();
 
         var (events, totalCount) = eventService.GetEvents(eventFilter, page, pageSize);
@@ -37,7 +53,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             page,
             pageSize);
         
-        var response = new ApiResult<PaginatedResult>
+        response = new ApiResult<PaginatedResult>
         {
             Data = result,
             Success = true,

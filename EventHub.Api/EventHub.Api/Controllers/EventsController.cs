@@ -24,7 +24,7 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <response code="400">Возвращается JSON-структура ApiBaseResult, если page или pageSize меньше 1</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResult<List<EventDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult<PaginatedResult>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
     public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
@@ -90,8 +90,10 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// </summary>
     /// <param name="eventDto">Параметр eventDto, для добавления нового события в коллекцию</param>
     /// <response code="201">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="400">Возвращается стандартный ValidationProblemDetails</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [Produces("application/json")]
     [HttpPost]
     public IActionResult CreateEvent([FromBody] EventUpsertDto eventDto)
@@ -115,9 +117,11 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <param name="id">id событие</param>
     /// <param name="eventDto">измененные данные события</param>
     /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="400">Возвращается стандартный ValidationProblemDetails</response>
     /// <response code="404">Возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpPut("{id}")]
@@ -142,11 +146,11 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// Метод удаляет событие из коллекции по id
     /// </summary>
     /// <param name="id">id события</param>
-    /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="204">Событие успешно удалено, возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <response code="404">Возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status204NoContent)]
     [Produces("application/json")]
     [HttpDelete("{id}")]
     public IActionResult DeleteEvent(Guid id)

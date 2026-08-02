@@ -1,19 +1,26 @@
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using EventHub.Api.Contracts;
 
 namespace EventHub.Tests;
 
 public class EventUpsertDtoValidationTests
 {
-    [Fact]
-    public void EventUpsertDto_EmptyTitle_FailsValidation()
+    // ASP.NET Core validates record primary-constructor parameters directly (not the
+    // generated properties) when binding a request body, so [Required] must live on the
+    // constructor parameter, not the property (see EventHub.Api/Contracts/Event/EventDto.cs).
+    // Validator.TryValidateObject only inspects properties and would misreport this as valid,
+    // so it can't be used here — reflect on the constructor parameter instead.
+    [Theory]
+    [InlineData("Title")]
+    [InlineData("StartAt")]
+    [InlineData("EndAt")]
+    public void EventUpsertDto_RequiredFields_HaveRequiredAttributeOnConstructorParameter(string parameterName)
     {
-        var dto = new EventUpsertDto(string.Empty, "desc", DateTime.UtcNow, DateTime.UtcNow.AddHours(1));
+        var ctor = typeof(EventUpsertDto).GetConstructors().Single();
+        var parameter = ctor.GetParameters().Single(p => p.Name == parameterName);
 
-        var isValid = TryValidate(dto, out var results);
-
-        Assert.False(isValid);
-        Assert.Contains(results, r => r.MemberNames.Contains(nameof(EventUpsertDto.Title)));
+        Assert.True(parameter.IsDefined(typeof(RequiredAttribute)));
     }
 
     [Fact]
@@ -23,29 +30,20 @@ public class EventUpsertDtoValidationTests
         var endAt = startAt.AddHours(-1);
         var dto = new EventUpsertDto("title", "desc", startAt, endAt);
 
-        var isValid = TryValidate(dto, out var results);
+        var results = dto.Validate(new ValidationContext(dto)).ToList();
 
-        Assert.False(isValid);
         Assert.Contains(results, r => r.MemberNames.Contains(nameof(EventUpsertDto.EndAt)));
     }
 
     [Fact]
-    public void EventUpsertDto_ValidData_PassesValidation()
+    public void EventUpsertDto_ValidDates_PassesValidation()
     {
         var startAt = DateTime.UtcNow;
         var endAt = startAt.AddHours(1);
         var dto = new EventUpsertDto("title", "desc", startAt, endAt);
 
-        var isValid = TryValidate(dto, out var results);
+        var results = dto.Validate(new ValidationContext(dto));
 
-        Assert.True(isValid);
         Assert.Empty(results);
-    }
-
-    private static bool TryValidate(EventUpsertDto dto, out List<ValidationResult> results)
-    {
-        results = [];
-        var context = new ValidationContext(dto);
-        return Validator.TryValidateObject(dto, context, results, validateAllProperties: true);
     }
 }

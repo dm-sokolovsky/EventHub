@@ -28,10 +28,10 @@ public record EventDto
 /// <param name="EndAt">Дата и время окончания</param>
 public record EventUpsertDto
 (
-    [property: Required(ErrorMessage = "Title is required")] string Title,
+    [Required(ErrorMessage = "Title is required")] string Title,
     string? Description,
-    [property: Required(ErrorMessage = "Start At is required")] DateTime StartAt,
-    [property: Required(ErrorMessage = "End At is required")] DateTime EndAt
+    [Required(ErrorMessage = "Start At is required")] DateTime StartAt,
+    [Required(ErrorMessage = "End At is required")] DateTime EndAt
 ) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

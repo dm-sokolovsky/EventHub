@@ -26,7 +26,11 @@ public class EventService : IEventService
 
     public Event? GetEventById(Guid id) => Events.FirstOrDefault(x => x.Id == id);
 
-    public void CreateEvent(Event newEvent) => Events.Add(newEvent);
+    public Event CreateEvent(Event newEvent)
+    {
+        Events.Add(newEvent);
+        return newEvent;
+    }
 
     public Event? UpdateEvent(Guid id, Event updatedEvent)
     {

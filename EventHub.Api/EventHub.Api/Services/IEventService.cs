@@ -6,7 +6,7 @@ public interface IEventService
 {
     (List<Event> Items, int TotalCount) GetEvents(EventFilter eventFilter, int page, int pageSize);
     Event? GetEventById(Guid id);
-    void CreateEvent(Event newEvent);
+    Event CreateEvent(Event newEvent);
     Event? UpdateEvent(Guid id, Event updatedEvent);
     bool DeleteEvent(Guid id);
 }

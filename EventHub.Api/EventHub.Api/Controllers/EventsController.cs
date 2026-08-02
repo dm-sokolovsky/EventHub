@@ -115,22 +115,22 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <param name="eventDto">Параметр eventDto, для добавления нового события в коллекцию</param>
     /// <response code="201">Возвращается JSON-структура ApiResult с деталями ответа</response>
     /// <returns></returns>
-    [ProducesResponseType(typeof(ApiResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status201Created)]
     [Produces("application/json")]
     [HttpPost]
     public IActionResult CreateEvent([FromBody] EventUpsertDto eventDto)
     {
-        eventService.CreateEvent(eventDto.ToEvent());
-        
-        var response = new ApiBaseResult
+        var created = eventService.CreateEvent(eventDto.ToEvent());
+
+        var response = new ApiResult<EventDto>
         {
+            Data = created.ToDto(),
             Success = true,
             StatusCode = HttpStatusCode.Created,
             Message = "Добавляем событие в коллекцию и возвращаем HTTP 201 Created"
         };
 
-        return response
-            .ToActionResult();
+        return CreatedAtAction(nameof(GetEventById), new { id = created.Id }, response);
     }
 
     /// <summary>

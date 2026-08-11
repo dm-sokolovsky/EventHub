@@ -15,8 +15,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1f4b030f-95d6-41cd-b82c-207026f22521" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/EventHub.Api/Models/Booking/Booking.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/EventHub.Api/Models/Booking/BookingStatus.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/EventHub.Api/Services/BookingService.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/EventHub.Api/Services/IBookingService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.EventHub.Api/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.EventHub.Api/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,7 +51,9 @@
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Models/ApiResult.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Models/Booking/Booking.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Models/Booking/BookingStatus.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/EventHub.Api/Services/BookingService.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Services/EventService.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/EventHub.Api/Services/IBookingService.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Services/IEventService.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Tests/EventServiceCollection.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Tests/EventServiceFilterTests.cs" root0="FORCE_HIGHLIGHTING" />
@@ -184,7 +187,7 @@
       <workItem from="1784177891134" duration="1443000" />
       <workItem from="1785229340172" duration="5124000" />
       <workItem from="1785273097436" duration="20276000" />
-      <workItem from="1786431625110" duration="1456000" />
+      <workItem from="1786431625110" duration="2418000" />
     </task>
     <task id="LOCAL-00001" summary="feat: create project">
       <option name="closed" value="true" />
@@ -410,7 +413,23 @@
       <option name="project" value="LOCAL" />
       <updated>1786432275412</updated>
     </task>
-    <option name="localTasksCounter" value="29" />
+    <task id="LOCAL-00029" summary="feat: add Model Booking">
+      <option name="closed" value="true" />
+      <created>1786433196538</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1786433196538</updated>
+    </task>
+    <task id="LOCAL-00030" summary="chore: Ignore folder .idea">
+      <option name="closed" value="true" />
+      <created>1786433213649</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1786433213649</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -420,8 +439,6 @@
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
-    <MESSAGE value="feat: add Validate" />
-    <MESSAGE value="feat: add EventsController" />
     <MESSAGE value="feat: add ApiResult in EventsController" />
     <MESSAGE value="feat: add doc for Swagger" />
     <MESSAGE value="doc: edit Readme" />
@@ -445,7 +462,9 @@
     <MESSAGE value="fix" />
     <MESSAGE value="refactor: Update sln name" />
     <MESSAGE value="fix: Ignore .DS_Store files" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: Ignore .DS_Store files" />
+    <MESSAGE value="feat: add Model Booking" />
+    <MESSAGE value="chore: Ignore folder .idea" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: Ignore folder .idea" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

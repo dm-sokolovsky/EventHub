@@ -1,4 +1,5 @@
 using EventHub.Api.Models;
+using EventHub.Api.Extensions;
 
 namespace EventHub.Api.Services;
 
@@ -6,13 +7,36 @@ public class EventService : IEventService
 {
     
     // Коллекция для манипуляции над событиями
-    private static List<Event> Events { get; set; } = [];
-    
-    public List<Event> GetEvents() => Events;
+    // TODO: static-состояние расшарено между всеми экземплярами EventService в рамках процесса,
+    // включая параллельные тесты (EventHub.Tests, EventHub.IntegrationTests). Сейчас тесты
+    // изолируются только за счёт Guid.NewGuid()-уникальных Title в фильтрах — это хрупко и не
+    // защищает от коллизий, если тесты когда-нибудь начнут проверять totalCount/список без
+    // фильтра. Нужен либо реальный сброс между тестами (метод EventService.Reset()/новый
+    // инстанс-хранилище вместо static), либо явный DI-скоуп per-test/per-collection.
+    private static List<Event> Events { get; } = [];
+
+    public (List<Event> Items, int TotalCount) GetEvents(EventFilter eventFilter, int page, int pageSize)
+    {
+        var filtered = Events.AsQueryable()
+            .TitleFilter(eventFilter.Title)
+            .FromDateFilter(eventFilter.From)
+            .ToDateFilter(eventFilter.To);
+
+        var totalCount = filtered.Count();
+        var items = filtered.Page(page, pageSize).ToList();
+
+        return (items, totalCount);
+    }
+
+
 
     public Event? GetEventById(Guid id) => Events.FirstOrDefault(x => x.Id == id);
 
-    public void CreateEvent(Event newEvent) => Events.Add(newEvent);
+    public Event CreateEvent(Event newEvent)
+    {
+        Events.Add(newEvent);
+        return newEvent;
+    }
 
     public Event? UpdateEvent(Guid id, Event updatedEvent)
     {

@@ -1,5 +1,8 @@
 using System.Net;
 using EventHub.Api.Common;
+using EventHub.Api.Common.Exceptions;
+using EventHub.Api.Contracts;
+using EventHub.Api.Extensions;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -18,23 +21,40 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// Метод возвращает все события из коллекции
     /// </summary>
     /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="400">Возвращается JSON-структура ApiBaseResult, если page или pageSize меньше 1</response>
     /// <returns></returns>
-    [ProducesResponseType(typeof(ApiResult<List<EventDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResult<PaginatedResult>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
-    public IActionResult GetAllEvents()
+    public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var result = eventService.GetEvents()
-            .Select(MapEventDto)
-            .ToList();
-        
-        return new ApiResult<List<EventDto>>
+        if (page < 1 || pageSize < 1)
+        {
+            throw new ValidationException($"page и pageSize должны быть не меньше 1 (page={page}, pageSize={pageSize})");
+        }
+
+        var eventFilter = eventFilterDto.ToEventFilter();
+
+        var (events, totalCount) = eventService.GetEvents(eventFilter, page, pageSize);
+        var eventDtos = events.Select(e => e.ToDto()).ToList();
+
+        var result = new PaginatedResult(
+            totalCount,
+            eventDtos,
+            page,
+            pageSize);
+
+        var response = new ApiResult<PaginatedResult>
         {
             Data = result,
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Получаем все события"
-        }.ToActionResult();
+        };
+
+        return response
+            .ToActionResult();
     }
     
     /// <summary>
@@ -43,47 +63,26 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <param name="id">Параметр id, для получения события</param>
     /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
     /// <response code="404">Возвращается JSON-структура ApiBaseResult с деталями ответа</response>
-    /// <response code="500">Возвращается JSON-структура ApiBaseResult с деталями ответа необработанного исключения</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status500InternalServerError)]
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet("{id}")]
     public IActionResult GetEventById(Guid id)
     {
-        try
-        {
-            var result = eventService
-                .GetEventById(id);
+        var result = eventService.GetEventById(id)
+            ?? throw new NotFoundException($"Не удалось найти событие по {id}");
 
-            if (result is null)
-            {
-                return new ApiBaseResult
-                {
-                    Success = false,
-                    StatusCode = HttpStatusCode.NotFound,
-                    Message = $"Не удалось найти событие по {id}"
-                }.ToActionResult();
-            }
-
-            return new ApiResult<EventDto>
-            {
-                Data = MapEventDto(result),
-                Success = true,
-                StatusCode = HttpStatusCode.OK,
-                Message = "Получаем событие по id из коллекции"
-            }.ToActionResult();
-        }
-        catch (Exception ex)
+        var response = new ApiResult<EventDto>
         {
-            return new ApiBaseResult
-            {
-                Success = false,
-                StatusCode = HttpStatusCode.InternalServerError,
-                Message = $"Необработанное исключение: {ex.Message}"
-            }.ToActionResult();
-        }
+            Data = result.ToDto(),
+            Success = true,
+            StatusCode = HttpStatusCode.OK,
+            Message = "Получаем событие по id из коллекции"
+        };
+
+        return response
+            .ToActionResult();
     }
 
     /// <summary>
@@ -91,20 +90,25 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// </summary>
     /// <param name="eventDto">Параметр eventDto, для добавления нового события в коллекцию</param>
     /// <response code="201">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="400">Возвращается стандартный ValidationProblemDetails</response>
     /// <returns></returns>
-    [ProducesResponseType(typeof(ApiResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [Produces("application/json")]
     [HttpPost]
-    public IActionResult CreateEvent([FromBody] EventCreatedDto eventDto)
+    public IActionResult CreateEvent([FromBody] EventUpsertDto eventDto)
     {
-        eventService.CreateEvent(MapEvent(eventDto));
-        
-        return new ApiBaseResult
+        var created = eventService.CreateEvent(eventDto.ToEvent());
+
+        var response = new ApiResult<EventDto>
         {
+            Data = created.ToDto(),
             Success = true,
             StatusCode = HttpStatusCode.Created,
             Message = "Добавляем событие в коллекцию и возвращаем HTTP 201 Created"
-        }.ToActionResult();
+        };
+
+        return CreatedAtAction(nameof(GetEventById), new { id = created.Id }, response);
     }
 
     /// <summary>
@@ -113,44 +117,40 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <param name="id">id событие</param>
     /// <param name="eventDto">измененные данные события</param>
     /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="400">Возвращается стандартный ValidationProblemDetails</response>
     /// <response code="404">Возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpPut("{id}")]
-    public IActionResult UpdateEvent(Guid id, [FromBody] EventCreatedDto eventDto)
+    public IActionResult UpdateEvent(Guid id, [FromBody] EventUpsertDto eventDto)
     {
-        var result = eventService.UpdateEvent(id, MapEvent(eventDto));
-        
-        if (result is null)
+        var result = eventService.UpdateEvent(id, eventDto.ToEvent())
+            ?? throw new NotFoundException($"Не удалось найти событие по {id}");
+
+        var response = new ApiResult<EventDto>
         {
-            return new ApiBaseResult
-            {
-                Success = false,
-                StatusCode = HttpStatusCode.NotFound,
-                Message = $"Не удалось найти событие по {id}"
-            }.ToActionResult();
-        }
-        
-        return new ApiResult<EventDto>
-        {
-            Data = MapEventDto(result),
+            Data = result.ToDto(),
             Success = true,
             StatusCode = HttpStatusCode.OK,
             Message = "Меняем событие в коллекции по id"
-        }.ToActionResult();
+        };
+
+        return response
+            .ToActionResult();
     }
 
     /// <summary>
     /// Метод удаляет событие из коллекции по id
     /// </summary>
     /// <param name="id">id события</param>
-    /// <response code="200">Возвращается JSON-структура ApiResult с деталями ответа</response>
+    /// <response code="204">Событие успешно удалено, возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <response code="404">Возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status204NoContent)]
     [Produces("application/json")]
     [HttpDelete("{id}")]
     public IActionResult DeleteEvent(Guid id)
@@ -159,26 +159,17 @@ public class EventsController(IEventService  eventService): ControllerBase
 
         if (!success)
         {
-            return new ApiBaseResult
-            {
-                Success = false,
-                StatusCode = HttpStatusCode.NotFound,
-                Message = $"Не удалось найти событие по {id}"
-            }.ToActionResult();
+            throw new NotFoundException($"Не удалось найти событие по {id}");
         }
-        
-        return new ApiBaseResult()
+
+        var response = new ApiBaseResult
         {
             Success = true,
             StatusCode = HttpStatusCode.NoContent,
             Message = "Удаляем событие из коллекции и возвращаем"
-        }.ToActionResult();
+        };
+
+        return response
+            .ToActionResult();
     }
-
-
-    private Event MapEvent(EventCreatedDto eventDto) 
-        => new Event(eventDto.Title, eventDto.Description, eventDto.StartAt, eventDto.EndAt);
-
-    private EventDto MapEventDto(Event @event) 
-        => new EventDto(@event.Id, @event.Title, @event.Description, @event.StartAt, @event.EndAt);
 }

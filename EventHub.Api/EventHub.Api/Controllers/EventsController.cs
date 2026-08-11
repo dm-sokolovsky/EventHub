@@ -1,7 +1,9 @@
 using System.Net;
 using EventHub.Api.Common;
 using EventHub.Api.Common.Exceptions;
+using EventHub.Api.Common.Extensions.Booking;
 using EventHub.Api.Contracts;
+using EventHub.Api.Contracts.Booking;
 using EventHub.Api.Extensions;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
@@ -15,7 +17,7 @@ namespace EventHub.Api.Controllers;
 /// <param name="eventService"></param>
 [ApiController]
 [Route("api/events")]
-public class EventsController(IEventService  eventService): ControllerBase
+public class EventsController(IEventService  eventService, IBookingService bookingService): ControllerBase
 {
     /// <summary>
     /// Метод возвращает все события из коллекции
@@ -172,4 +174,57 @@ public class EventsController(IEventService  eventService): ControllerBase
         return response
             .ToActionResult();
     }
+
+    /// <summary>
+    /// Метод создает бронь по Id события 
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    /// <exception cref="NotFoundException"></exception>
+    [Produces("application/json")]
+    [HttpPost("{id}/book")]
+    public async Task<IActionResult> CreateBooking(Guid id)
+    {
+    
+        var @event = eventService.GetEventById(id) 
+                    ?? throw new NotFoundException($"Не удалось найти событие по {id}");
+        
+        var booking = await bookingService.CreateBookingAsync(@event.Id);
+        
+        
+        var response = new ApiResult<BookingCreateDto>
+        {
+            Data = booking.ToCreateDto(),
+            Success = true,
+            StatusCode = HttpStatusCode.Accepted,
+            Message = "Добавляем бронь в коллекцию и возвращаем HTTP 202 Accepted"
+        };
+    
+        return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, response);
+        
+    }
+
+    /// <summary>
+    /// Метод получает бронь по id брони
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    /// <exception cref="NotFoundException"></exception>
+    [HttpGet("bookings/{id}")]
+    public async Task<IActionResult> GetBookingById(Guid id)
+    {
+        var booking = await bookingService.GetBookingByIdAsync(id)
+                      ?? throw new NotFoundException($"Не удалось найти бронь по {id}");
+        
+        var response = new ApiResult<BookingDto>
+        {
+            Data = booking.ToDto(),
+            Success = true,
+            StatusCode = HttpStatusCode.OK,
+            Message = "Получаем бронь по id из коллекции"
+        };
+
+        return response.ToActionResult();
+    }
+    
 }

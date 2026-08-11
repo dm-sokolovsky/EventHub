@@ -15,9 +15,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1f4b030f-95d6-41cd-b82c-207026f22521" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/EventHub.Api/Services/BookingService.cs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/EventHub.Api/Services/IBookingService.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/EventHub.Api/Common/Extensions/Booking/BookingMappingExtensions.cs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/EventHub.Api/Contracts/Booking/BookingDto.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.EventHub.Api/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.EventHub.Api/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EventHub.Api/Common/Extensions/EventMappingExtensions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/EventHub.Api/Common/Extensions/Event/EventMappingExtensions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EventHub.Api/Common/Extensions/EventQueryableExtensions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/EventHub.Api/Common/Extensions/Event/EventQueryableExtensions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EventHub.Api/Controllers/EventsController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/EventHub.Api/Controllers/EventsController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EventHub.Api/Services/BookingService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/EventHub.Api/Services/BookingService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/EventHub.Api/Services/IBookingService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/EventHub.Api/Services/IBookingService.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,6 +52,8 @@
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Common/ApiBaseResultExtensions.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Common/ApiResultActionResult.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Common/Exceptions/NotFoundException.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/EventHub.Api/Common/Extensions/Booking/BookingMappingExtensions.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/EventHub.Api/Contracts/Booking/BookingDto.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Controllers/EventsController.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Models/ApiResult.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/EventHub.Api/Models/Booking/Booking.cs" root0="FORCE_HIGHLIGHTING" />
@@ -437,6 +444,17 @@
   </component>
   <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
     <MESSAGE value="feat: add ApiResult in EventsController" />

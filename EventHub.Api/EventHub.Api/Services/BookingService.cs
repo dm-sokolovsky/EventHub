@@ -7,10 +7,11 @@ public class BookingService : IBookingService
 
     private static List<Booking> Bookings { get; } = [];
 
-    public Task CreateBookingAsync(Guid eventId)
+    public Task<Booking> CreateBookingAsync(Guid eventId)
     {
-        Bookings.Add(new Booking(eventId));
-        return Task.CompletedTask;
+        var booking = new Booking(eventId);
+        Bookings.Add(booking);
+        return Task.FromResult(booking);
     }
 
     public Task<Booking?> GetBookingByIdAsync(Guid bookingId)

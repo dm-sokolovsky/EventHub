@@ -12,7 +12,7 @@ public interface IBookingService
     /// </summary>
     /// <param name="eventId">Id события</param>
     /// <returns></returns>
-    Task CreateBookingAsync(Guid eventId);
+    Task<Booking> CreateBookingAsync(Guid eventId);
     
     /// <summary>
     /// Получение брони по идентификатору 

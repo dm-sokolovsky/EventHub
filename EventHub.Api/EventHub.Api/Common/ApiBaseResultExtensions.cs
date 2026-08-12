@@ -9,6 +9,6 @@ public static class ApiBaseResultExtensions
         => new ApiResultActionResult(result);
     
     public static IActionResult ToActionResultWithLocation(
-        this ApiBaseResult result, string actionName, object? routeValues = null)
-        => new ApiResultWithLocationResult(result, actionName, routeValues);
+        this ApiBaseResult result, string actionName, string? controllerName = null, object? routeValues = null)
+        => new ApiResultWithLocationResult(result, actionName, controllerName, routeValues);
 }

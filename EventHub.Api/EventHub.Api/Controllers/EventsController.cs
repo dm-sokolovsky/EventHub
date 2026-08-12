@@ -183,6 +183,8 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <param name="id"></param>
     /// <returns></returns>
     /// <exception cref="NotFoundException"></exception>
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status202Accepted)]
     [Produces("application/json")]
     [HttpPost("{id}/book")]
     public async Task<IActionResult> CreateBooking(Guid id)

@@ -25,6 +25,8 @@ public class BookingsController(IBookingService bookingService): ControllerBase
     /// <param name="id"></param>
     /// <returns></returns>
     /// <exception cref="NotFoundException"></exception>
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
+    [Produces("application/json")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetBookingById(Guid id)
     {

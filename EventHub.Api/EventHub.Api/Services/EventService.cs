@@ -40,15 +40,19 @@ public class EventService : IEventService
 
     public Event? UpdateEvent(Guid id, Event updatedEvent)
     {
-        var index = Events.FindIndex(x => x.Id == id);
+        var @event = Events.FirstOrDefault(x => x.Id == id);
         
-        if (index == -1)
+        if (@event is null)
             return null;
 
-        updatedEvent.Id = id;
+        @event.UpdateDetails(
+            updatedEvent.Title,
+            updatedEvent.Description,
+            updatedEvent.StartAt,
+            updatedEvent.EndAt
+            );
         
-        Events[index] = updatedEvent;
-        return updatedEvent;
+        return @event;
     }
 
     public bool DeleteEvent(Guid id)

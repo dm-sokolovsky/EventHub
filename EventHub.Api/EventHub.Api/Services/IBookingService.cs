@@ -15,9 +15,20 @@ public interface IBookingService
     Task<Booking> CreateBookingAsync(Guid eventId);
     
     /// <summary>
-    /// Получение брони по идентификатору 
+    /// Получение брони по идентификатору
     /// </summary>
     /// <param name="bookingId">Id брони</param>
     /// <returns></returns>
     Task<Booking?> GetBookingByIdAsync(Guid bookingId);
+
+    /// <summary>
+    /// Получение всех броней в статусе Pending
+    /// </summary>
+    Task<IReadOnlyList<Booking>> GetPendingBookingsAsync();
+
+    /// <summary>
+    /// Сохранение обновлённой брони в хранилище
+    /// </summary>
+    /// <param name="booking">Обновлённая бронь</param>
+    Task UpdateBookingAsync(Booking booking);
 }

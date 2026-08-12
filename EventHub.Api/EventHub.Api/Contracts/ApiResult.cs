@@ -3,7 +3,7 @@ using System.Net;
 namespace EventHub.Api.Models;
 
 /// <summary>
-/// Кдасс с возвращаемыми данными
+/// Класс с возвращаемыми данными
 /// </summary>
 /// <typeparam name="T"></typeparam>
 public class ApiResult<T> : ApiBaseResult

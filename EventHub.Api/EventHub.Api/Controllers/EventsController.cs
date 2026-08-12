@@ -5,6 +5,7 @@ using EventHub.Api.Common.Extensions.Booking;
 using EventHub.Api.Contracts;
 using EventHub.Api.Contracts.Booking;
 using EventHub.Api.Extensions;
+using EventHub.Api.Extensions.Event;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;

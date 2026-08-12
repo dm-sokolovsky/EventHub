@@ -1,5 +1,7 @@
 using EventHub.Api.Models;
 using EventHub.Api.Extensions;
+using EventHub.Api.Extensions.Event;
+using EventHub.Api.Models.Event;
 
 namespace EventHub.Api.Services;
 

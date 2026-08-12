@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace EventHub.Api.Models;
+namespace EventHub.Api.Models.Event;
 
 public class Event
 {

@@ -17,17 +17,3 @@ public record BookingDto(
     DateTime CreatedAt,
     DateTime? ProcessedAt
 );
-
-
-
-/// <summary>
-/// DTO для создания брони
-/// </summary>
-/// <param name="Id">Id брони</param>
-/// <param name="EventId">Id события</param>
-/// <param name="Status">Статус брони</param>
-public record BookingCreateDto(
-    Guid Id,
-    Guid EventId,
-    BookingStatus Status
-);

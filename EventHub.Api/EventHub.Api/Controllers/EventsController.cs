@@ -192,9 +192,9 @@ public class EventsController(IEventService  eventService, IBookingService booki
         var booking = await bookingService.CreateBookingAsync(@event.Id);
         
         
-        var response = new ApiResult<BookingCreateDto>
+        var response = new ApiResult<BookingDto>
         {
-            Data = booking.ToCreateDto(),
+            Data = booking.ToDto(),
             Success = true,
             StatusCode = HttpStatusCode.Accepted,
             Message = "Добавляем бронь в коллекцию и возвращаем HTTP 202 Accepted"

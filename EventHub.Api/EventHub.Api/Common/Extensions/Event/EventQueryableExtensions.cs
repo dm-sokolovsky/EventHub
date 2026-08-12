@@ -11,7 +11,7 @@ public static class EventQueryableExtensions
 
         var titleSmall = title.ToLower();
 
-        return queryable.Where(e => e.Title.ToLower().Contains(titleSmall));
+        return queryable.Where(e => e.Title.Contains(title, StringComparison.OrdinalIgnoreCase));
     }
 
     public static IQueryable<Models.Event.Event> FromDateFilter(this IQueryable<Models.Event.Event> queryable, DateTime? date)

@@ -189,13 +189,9 @@ public class EventsController(IEventService  eventService, IBookingService booki
     [HttpPost("{id}/book")]
     public async Task<IActionResult> CreateBooking(Guid id)
     {
-    
-        var @event = eventService.GetEventById(id) 
-                    ?? throw new NotFoundException($"Не удалось найти событие по {id}");
-        
-        var booking = await bookingService.CreateBookingAsync(@event.Id);
-        
-        
+        var booking = await bookingService.CreateBookingAsync(id);
+
+
         var response = new ApiResult<BookingDto>
         {
             Data = booking.ToDto(),

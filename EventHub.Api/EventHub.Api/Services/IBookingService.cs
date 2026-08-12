@@ -8,10 +8,11 @@ namespace EventHub.Api.Services;
 public interface IBookingService
 {
     /// <summary>
-    /// Создание брони для указанного события 
+    /// Создание брони для указанного события
     /// </summary>
     /// <param name="eventId">Id события</param>
     /// <returns></returns>
+    /// <exception cref="EventHub.Api.Common.Exceptions.NotFoundException">Событие не найдено или было удалено</exception>
     Task<Booking> CreateBookingAsync(Guid eventId);
     
     /// <summary>

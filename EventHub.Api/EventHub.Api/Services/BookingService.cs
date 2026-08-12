@@ -1,8 +1,9 @@
+using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Models.Booking;
 
 namespace EventHub.Api.Services;
 
-public class BookingService : IBookingService
+public class BookingService(IEventService eventService) : IBookingService
 {
 
     private static List<Booking> Bookings { get; } = [];
@@ -14,7 +15,10 @@ public class BookingService : IBookingService
 
     public Task<Booking> CreateBookingAsync(Guid eventId)
     {
-        var booking = new Booking(eventId);
+        var @event = eventService.GetEventById(eventId)
+            ?? throw new NotFoundException($"Не удалось найти событие по {eventId}");
+
+        var booking = new Booking(@event.Id);
 
         lock (_syncRoot)
         {

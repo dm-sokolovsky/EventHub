@@ -18,7 +18,7 @@ namespace EventHub.Api.Controllers;
 /// <param name="eventService"></param>
 [ApiController]
 [Route("api/events")]
-public class EventsController(IEventService  eventService, IBookingService bookingService): ControllerBase
+public class EventController(IEventService  eventService, IBookingService bookingService): ControllerBase
 {
     /// <summary>
     /// Метод возвращает все события из коллекции
@@ -111,7 +111,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
             Message = "Добавляем событие в коллекцию и возвращаем HTTP 201 Created"
         };
 
-        return CreatedAtAction(nameof(GetEventById), new { id = created.Id }, response);
+        return response.ToActionResultWithLocation(nameof(GetEventById), new { id = created.Id });
     }
 
     /// <summary>
@@ -201,7 +201,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
             Message = "Добавляем бронь в коллекцию и возвращаем HTTP 202 Accepted"
         };
     
-        return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, response);
+        return response.ToActionResultWithLocation(nameof(GetBookingById), new { id = booking.Id });
         
     }
 

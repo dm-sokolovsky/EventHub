@@ -28,7 +28,7 @@ public class Booking
     /// <summary>
     /// Дата и время обработки брони
     /// </summary>
-    public DateTime? ProcessedAt { get; set; }
+    public DateTime? ProcessedAt { get;  private set; }
 
     /// <summary>
     /// Создание бронирование 
@@ -40,5 +40,23 @@ public class Booking
         EventId = eventId;
         Status = BookingStatus.Pending;
         CreatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Метод, который подтверждает бронь
+    /// </summary>
+    public void Confirm()
+    {
+        Status = BookingStatus.Confirmed;
+        ProcessedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Метод, который отклоняет бронь
+    /// </summary>
+    public void Reject()
+    {
+        Status = BookingStatus.Rejected;
+        ProcessedAt = DateTime.UtcNow;
     }
 }

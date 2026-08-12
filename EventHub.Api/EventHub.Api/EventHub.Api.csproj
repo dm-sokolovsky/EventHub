@@ -20,6 +20,9 @@
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
+      <Content Include="..\REFACTORING_NOTES.md">
+        <Link>Properties\REFACTORING_NOTES.md</Link>
+      </Content>
     </ItemGroup>
 
 </Project>

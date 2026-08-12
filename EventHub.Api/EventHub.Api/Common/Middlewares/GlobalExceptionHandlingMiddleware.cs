@@ -1,7 +1,6 @@
 using System.Net;
 using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Models;
-using ValidationException = EventHub.Api.Common.Exceptions.ValidationException;
 
 namespace EventHub.Api.Common;
 
@@ -67,7 +66,10 @@ public class GlobalExceptionHandlingMiddleware
             {
                 Success = false,
                 StatusCode = (HttpStatusCode)statusCode,
-                Message = ex.Message
+                Message = statusCode >= StatusCodes.Status500InternalServerError
+                    ? "Внутренняя ошибка сервера"
+                    : ex.Message
+
             };
 
             await httpContext.Response.WriteAsJsonAsync(error);

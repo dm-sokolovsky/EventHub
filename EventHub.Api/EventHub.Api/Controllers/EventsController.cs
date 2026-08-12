@@ -35,7 +35,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     {
         if (page < 1 || pageSize < 1)
         {
-            throw new ValidationException($"page и pageSize должны быть не меньше 1 (page={page}, pageSize={pageSize})");
+            throw new BadRequestException($"page и pageSize должны быть не меньше 1 (page={page}, pageSize={pageSize})");
         }
 
         var eventFilter = eventFilterDto.ToEventFilter();

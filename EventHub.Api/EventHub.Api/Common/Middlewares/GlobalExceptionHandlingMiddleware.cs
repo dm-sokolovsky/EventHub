@@ -75,10 +75,5 @@ public class GlobalExceptionHandlingMiddleware
     }
 
     private static int MapStatusCode(Exception ex)
-        => ex switch
-        {
-            ValidationException ve => StatusCodes.Status400BadRequest,
-            NotFoundException nfe => StatusCodes.Status404NotFound,
-            _ => StatusCodes.Status500InternalServerError
-        };
+        => ex is ApiException apiException ? apiException.StatusCode : StatusCodes.Status500InternalServerError;
 }

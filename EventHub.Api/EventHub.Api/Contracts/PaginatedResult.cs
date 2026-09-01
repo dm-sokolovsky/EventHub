@@ -7,9 +7,9 @@ namespace EventHub.Api.Contracts;
 /// <param name="Events">Массив событий текущей страницы</param>
 /// <param name="PageNumber">Номер текущей страницы</param>
 /// <param name="PageSize">Кол-во элементов на текущей странице</param>
-public record PaginatedResult(
+public record PaginatedResult<T>(
     int TotalCount,
-    List<EventDto> Events,
+    List<T> Items,
     int PageNumber,
     int PageSize
     );

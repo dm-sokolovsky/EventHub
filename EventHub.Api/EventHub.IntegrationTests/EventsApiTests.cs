@@ -82,10 +82,10 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = await response.Content.ReadFromJsonAsync<ApiResult<PaginatedResult>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResult<PaginatedResult<EventDto>>>();
         Assert.NotNull(body);
         Assert.Equal(1, body!.Data.TotalCount);
-        Assert.Equal(uniqueTitle, Assert.Single(body.Data.Events).Title);
+        Assert.Equal(uniqueTitle, Assert.Single(body.Data.Items).Title);
     }
 
     [Fact]

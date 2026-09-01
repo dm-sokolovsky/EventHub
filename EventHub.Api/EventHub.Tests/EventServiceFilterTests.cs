@@ -1,4 +1,5 @@
 using EventHub.Api.Models;
+using EventHub.Api.Models.Event;
 using EventHub.Api.Services;
 
 namespace EventHub.Tests;

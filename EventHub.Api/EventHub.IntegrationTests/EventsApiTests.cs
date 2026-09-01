@@ -31,7 +31,7 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
 
-        var body = await response.Content.ReadFromJsonAsync<ApiResult<EventDto>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResult<EventInfoDto>>();
         Assert.NotNull(body);
         Assert.True(body!.Success);
         Assert.Equal(payload.title, body.Data.Title);

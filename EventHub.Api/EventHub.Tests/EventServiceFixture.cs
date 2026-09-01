@@ -21,10 +21,10 @@ public class EventServiceFixture
         EventService = new EventService();
         Events = new List<Event>()
         {
-            new Event("test1", "test1",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(1)),
-            new Event("test2", "test2",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(2)),
-            new Event("test3", "test3",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(3)),
-            new Event("test4", "test4",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(4))
+            new Event("test1", "test1",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(1), 10),
+            new Event("test2", "test2",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(2), 10),
+            new Event("test3", "test3",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(3), 10),
+            new Event("test4", "test4",  DateTime.UtcNow,  DateTime.UtcNow + TimeSpan.FromDays(4), 10)
         };
     }
 }

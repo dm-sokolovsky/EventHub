@@ -21,7 +21,7 @@ public class EventServicePaginatedTests
         var uniqueTitle = $"page_{Guid.NewGuid()}";
         for (var i = 0; i < 5; i++)
         {
-            _eventService.CreateEvent(new Event(uniqueTitle, $"desc{i}", DateTime.UtcNow, DateTime.UtcNow.AddDays(1)));
+            _eventService.CreateEvent(new Event(uniqueTitle, $"desc{i}", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10));
         }
 
         var filter = new EventFilter(uniqueTitle, null, null);

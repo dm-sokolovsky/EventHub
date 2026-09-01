@@ -19,8 +19,8 @@ public class EventServiceFilterTests
     public void EventService_FilterByTitle_ReturnsOnlyMatchingEvents()
     {
         var uniqueTitle = $"title_{Guid.NewGuid()}";
-        var matching = new Event(uniqueTitle, "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
-        var nonMatching = new Event($"other_{Guid.NewGuid()}", "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+        var matching = new Event(uniqueTitle, "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
+        var nonMatching = new Event($"other_{Guid.NewGuid()}", "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
 
         _eventService.CreateEvent(matching);
         _eventService.CreateEvent(nonMatching);
@@ -37,8 +37,8 @@ public class EventServiceFilterTests
     {
         var uniqueTitle = $"date_range_{Guid.NewGuid()}";
 
-        var inRange = new Event(uniqueTitle, "desc", new DateTime(2026, 1, 10), new DateTime(2026, 1, 11));
-        var outOfRange = new Event(uniqueTitle, "desc", new DateTime(2026, 3, 10), new DateTime(2026, 3, 11));
+        var inRange = new Event(uniqueTitle, "desc", new DateTime(2026, 1, 10), new DateTime(2026, 1, 11), 10);
+        var outOfRange = new Event(uniqueTitle, "desc", new DateTime(2026, 3, 10), new DateTime(2026, 3, 11), 10);
 
         _eventService.CreateEvent(inRange);
         _eventService.CreateEvent(outOfRange);
@@ -57,9 +57,9 @@ public class EventServiceFilterTests
         var from = new DateTime(2026, 5, 1);
         var to = new DateTime(2026, 5, 31);
 
-        var matchesBoth = new Event($"{titlePrefix}_match", "desc", new DateTime(2026, 5, 10), new DateTime(2026, 5, 11));
-        var matchesTitleOnly = new Event($"{titlePrefix}_match", "desc", new DateTime(2026, 7, 10), new DateTime(2026, 7, 11));
-        var matchesDateOnly = new Event($"other_{Guid.NewGuid()}", "desc", new DateTime(2026, 5, 10), new DateTime(2026, 5, 11));
+        var matchesBoth = new Event($"{titlePrefix}_match", "desc", new DateTime(2026, 5, 10), new DateTime(2026, 5, 11), 10);
+        var matchesTitleOnly = new Event($"{titlePrefix}_match", "desc", new DateTime(2026, 7, 10), new DateTime(2026, 7, 11), 10);
+        var matchesDateOnly = new Event($"other_{Guid.NewGuid()}", "desc", new DateTime(2026, 5, 10), new DateTime(2026, 5, 11), 10);
 
         _eventService.CreateEvent(matchesBoth);
         _eventService.CreateEvent(matchesTitleOnly);

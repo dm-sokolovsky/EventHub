@@ -19,7 +19,7 @@ public class BookingServiceTests
 
     private Event CreateEvent(string title)
     {
-        var @event = new Event(title, "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+        var @event = new Event(title, "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
         _eventService.CreateEvent(@event);
         return @event;
     }

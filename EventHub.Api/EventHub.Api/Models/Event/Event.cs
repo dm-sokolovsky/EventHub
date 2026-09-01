@@ -46,10 +46,11 @@ public class Event
     /// <param name="description"></param>
     /// <param name="startAt"></param>
     /// <param name="endAt"></param>
-    /// /// <param name="totalSeats"></param>
+    /// <param name="totalSeats"></param>
     public Event(string title, string? description, DateTime startAt, DateTime endAt, int totalSeats)
     {
         ValidatePeriod(startAt, endAt);
+        ValidateTotalSeats(totalSeats);
         Id = Guid.NewGuid();
         Title = title;
         Description = description;
@@ -57,6 +58,25 @@ public class Event
         EndAt = endAt;
         TotalSeats = totalSeats;
         AvailableSeats = totalSeats;
+    }
+    
+    /// <summary>
+    /// Метод для обновления события 
+    /// </summary>
+    /// <param name="title"></param>
+    /// <param name="description"></param>
+    /// <param name="startAt"></param>
+    /// <param name="endAt"></param>
+    /// <param name="totalSeats"></param>
+    /// <exception cref="ArgumentException"></exception>
+    public void UpdateDetails(string title, string? description, DateTime startAt, DateTime endAt, int totalSeats)
+    {
+        ValidatePeriod(startAt, endAt);
+        ValidateTotalSeats(totalSeats);
+        Title = title;
+        Description = description;
+        StartAt = startAt;
+        EndAt = endAt;
     }
 
     /// <summary>
@@ -77,27 +97,16 @@ public class Event
     {
         return false;
     }
-
-    /// <summary>
-    /// Метод для обновления события 
-    /// </summary>
-    /// <param name="title"></param>
-    /// <param name="description"></param>
-    /// <param name="startAt"></param>
-    /// <param name="endAt"></param>
-    /// <exception cref="ArgumentException"></exception>
-    public void UpdateDetails(string title, string? description, DateTime startAt, DateTime endAt)
-    {
-        ValidatePeriod(startAt, endAt);
-        Title = title;
-        Description = description;
-        StartAt = startAt;
-        EndAt = endAt;
-    }
     
     private static void ValidatePeriod(DateTime startAt, DateTime endAt)
     {
         if (endAt <= startAt)
             throw new ArgumentException("EndAt должен быть позже StartAt");
+    }
+
+    private static void ValidateTotalSeats(int totalSeats)
+    {
+        if (totalSeats <= 0)
+            throw new ArgumentException("TotalSeats должен быть больше 0");
     }
 }

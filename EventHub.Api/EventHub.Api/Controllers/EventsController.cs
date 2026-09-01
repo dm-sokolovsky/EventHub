@@ -28,7 +28,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <response code="400">Возвращается JSON-структура ApiBaseResult, если page или pageSize меньше 1</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResult<PaginatedResult<EventDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult<PaginatedResult<EventInfoDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
     public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
@@ -43,13 +43,13 @@ public class EventsController(IEventService  eventService, IBookingService booki
         var (events, totalCount) = eventService.GetEvents(eventFilter, page, pageSize);
         var eventDtos = events.Select(e => e.ToDto()).ToList();
 
-        var result = new PaginatedResult<EventDto>(
+        var result = new PaginatedResult<EventInfoDto>(
             totalCount,
             eventDtos,
             page,
             pageSize);
 
-        var response = new ApiResult<PaginatedResult<EventDto>>
+        var response = new ApiResult<PaginatedResult<EventInfoDto>>
         {
             Data = result,
             Success = true,

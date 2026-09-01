@@ -51,7 +51,8 @@ public class EventService : IEventService
             updatedEvent.Title,
             updatedEvent.Description,
             updatedEvent.StartAt,
-            updatedEvent.EndAt
+            updatedEvent.EndAt,
+            updatedEvent.TotalSeats
             );
         
         return @event;

@@ -1,8 +1,10 @@
 using System.Net;
 using EventHub.Api.Common;
 using EventHub.Api.Common.Exceptions;
+using EventHub.Api.Common.Extensions.Booking;
 using EventHub.Api.Contracts;
-using EventHub.Api.Extensions;
+using EventHub.Api.Contracts.Booking;
+using EventHub.Api.Extensions.Event;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -15,8 +17,10 @@ namespace EventHub.Api.Controllers;
 /// <param name="eventService"></param>
 [ApiController]
 [Route("api/events")]
-public class EventsController(IEventService  eventService): ControllerBase
+public class EventsController(IEventService  eventService, IBookingService bookingService): ControllerBase
 {
+    public const string Name = "Events";
+    
     /// <summary>
     /// Метод возвращает все события из коллекции
     /// </summary>
@@ -24,14 +28,14 @@ public class EventsController(IEventService  eventService): ControllerBase
     /// <response code="400">Возвращается JSON-структура ApiBaseResult, если page или pageSize меньше 1</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResult<PaginatedResult>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult<PaginatedResult<EventDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
     public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         if (page < 1 || pageSize < 1)
         {
-            throw new ValidationException($"page и pageSize должны быть не меньше 1 (page={page}, pageSize={pageSize})");
+            throw new BadRequestException($"page и pageSize должны быть не меньше 1 (page={page}, pageSize={pageSize})");
         }
 
         var eventFilter = eventFilterDto.ToEventFilter();
@@ -39,13 +43,13 @@ public class EventsController(IEventService  eventService): ControllerBase
         var (events, totalCount) = eventService.GetEvents(eventFilter, page, pageSize);
         var eventDtos = events.Select(e => e.ToDto()).ToList();
 
-        var result = new PaginatedResult(
+        var result = new PaginatedResult<EventDto>(
             totalCount,
             eventDtos,
             page,
             pageSize);
 
-        var response = new ApiResult<PaginatedResult>
+        var response = new ApiResult<PaginatedResult<EventDto>>
         {
             Data = result,
             Success = true,
@@ -108,7 +112,7 @@ public class EventsController(IEventService  eventService): ControllerBase
             Message = "Добавляем событие в коллекцию и возвращаем HTTP 201 Created"
         };
 
-        return CreatedAtAction(nameof(GetEventById), new { id = created.Id }, response);
+        return response.ToActionResultWithLocation(nameof(GetEventById), null,new { id = created.Id });
     }
 
     /// <summary>
@@ -172,4 +176,35 @@ public class EventsController(IEventService  eventService): ControllerBase
         return response
             .ToActionResult();
     }
+
+    /// <summary>
+    /// Метод создает бронь по Id события 
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    /// <exception cref="NotFoundException"></exception>
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status202Accepted)]
+    [Produces("application/json")]
+    [HttpPost("{id}/book")]
+    public async Task<IActionResult> CreateBooking(Guid id)
+    {
+        var booking = await bookingService.CreateBookingAsync(id);
+
+
+        var response = new ApiResult<BookingDto>
+        {
+            Data = booking.ToDto(),
+            Success = true,
+            StatusCode = HttpStatusCode.Accepted,
+            Message = "Добавляем бронь в коллекцию и возвращаем HTTP 202 Accepted"
+        };
+    
+        return response.ToActionResultWithLocation(
+            nameof(BookingsController.GetBookingById),
+            BookingsController.Name,
+            new { id = booking.Id });
+        
+    }
+    
 }

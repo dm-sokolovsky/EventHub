@@ -23,7 +23,8 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
             title = $"http_create_{Guid.NewGuid()}",
             description = "desc",
             startAt = DateTime.UtcNow,
-            endAt = DateTime.UtcNow.AddHours(1)
+            endAt = DateTime.UtcNow.AddHours(1),
+            totalSeats = 10
         };
 
         var response = await _client.PostAsJsonAsync("/api/events", payload);
@@ -74,7 +75,8 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
             title = uniqueTitle,
             description = "desc",
             startAt = DateTime.UtcNow,
-            endAt = DateTime.UtcNow.AddHours(1)
+            endAt = DateTime.UtcNow.AddHours(1),
+            totalSeats = 10
         };
         await _client.PostAsJsonAsync("/api/events", payload);
 
@@ -108,7 +110,8 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
             title = "does_not_matter",
             description = "desc",
             startAt = DateTime.UtcNow,
-            endAt = DateTime.UtcNow.AddHours(1)
+            endAt = DateTime.UtcNow.AddHours(1),
+            totalSeats = 10
         };
 
         var response = await _client.PutAsJsonAsync($"/api/events/{Guid.NewGuid()}", payload);

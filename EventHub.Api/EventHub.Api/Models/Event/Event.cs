@@ -88,14 +88,14 @@ public class Event
     {
         if (count > AvailableSeats)
             return  false;
-
+        
         AvailableSeats -= count;
         return true;
     }
     
-    public bool ReleaseSeat(int count = 1)
+    public void ReleaseSeat(int count = 1)
     {
-        return false;
+        AvailableSeats += count;
     }
     
     private static void ValidatePeriod(DateTime startAt, DateTime endAt)

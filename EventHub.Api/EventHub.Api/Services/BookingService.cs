@@ -11,26 +11,32 @@ public class BookingService(IEventService eventService) : IBookingService
     // Booking теперь читается и изменяется не только из запросов контроллера,
     // но и из BookingProcessingBackgroundService на отдельном потоке —
     // List<T> не потокобезопасен, поэтому все обращения к Bookings идут под lock.
-    private readonly object _syncRoot = new();
+    private readonly object _bookingLock = new();
 
     public Task<Booking> CreateBookingAsync(Guid eventId)
     {
-        var @event = eventService.GetEventById(eventId)
-            ?? throw new NotFoundException($"Не удалось найти событие по {eventId}");
-
-        var booking = new Booking(@event.Id);
-
-        lock (_syncRoot)
+        
+        lock (_bookingLock)
         {
-            Bookings.Add(booking);
-        }
+            var @event = eventService.GetEventById(eventId)
+                         ?? throw new NotFoundException($"Не удалось найти событие по {eventId}");
+            
+            var isReserveSeats = @event.TryReserveSeats();
 
-        return Task.FromResult(booking);
+            if (!isReserveSeats)
+                throw new NoAvailableSeatsException("No available seats for this event");
+
+            var booking = new Booking(@event.Id);
+            
+            Bookings.Add(booking);
+                
+            return Task.FromResult(booking);
+        }
     }
 
     public Task<Booking?> GetBookingByIdAsync(Guid bookingId)
     {
-        lock (_syncRoot)
+        lock (_bookingLock)
         {
             var booking = Bookings.FirstOrDefault(x => x.Id == bookingId);
             return Task.FromResult(booking);
@@ -39,7 +45,7 @@ public class BookingService(IEventService eventService) : IBookingService
 
     public Task<IReadOnlyList<Booking>> GetPendingBookingsAsync()
     {
-        lock (_syncRoot)
+        lock (_bookingLock)
         {
             IReadOnlyList<Booking> pending = Bookings
                 .Where(x => x.Status == BookingStatus.Pending)
@@ -51,7 +57,7 @@ public class BookingService(IEventService eventService) : IBookingService
 
     public Task UpdateBookingAsync(Booking booking)
     {
-        lock (_syncRoot)
+        lock (_bookingLock)
         {
             var index = Bookings.FindIndex(x => x.Id == booking.Id);
 

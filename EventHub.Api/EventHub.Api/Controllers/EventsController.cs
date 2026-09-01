@@ -183,15 +183,16 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <param name="id"></param>
     /// <returns></returns>
     /// <exception cref="NotFoundException"></exception>
+    /// <exception cref="NoAvailableSeatsException"></exception>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status409Conflict)]
     [Produces("application/json")]
     [HttpPost("{id}/book")]
     public async Task<IActionResult> CreateBooking(Guid id)
     {
         var booking = await bookingService.CreateBookingAsync(id);
-
-
+        
         var response = new ApiResult<BookingDto>
         {
             Data = booking.ToDto(),

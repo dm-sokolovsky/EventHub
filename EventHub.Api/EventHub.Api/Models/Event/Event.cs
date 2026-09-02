@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EventHub.Api.Common.Exceptions;
 
 namespace EventHub.Api.Models.Event;
 
@@ -68,15 +69,23 @@ public class Event
     /// <param name="startAt"></param>
     /// <param name="endAt"></param>
     /// <param name="totalSeats"></param>
-    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="BadRequestException"></exception>
     public void UpdateDetails(string title, string? description, DateTime startAt, DateTime endAt, int totalSeats)
     {
         ValidatePeriod(startAt, endAt);
         ValidateTotalSeats(totalSeats);
+
+        // Проверяем новый totalSeats не уменьшается ли ниже уже забронированных мест
+        var bookedSeats = TotalSeats - AvailableSeats;
+        if (totalSeats < bookedSeats)
+            throw new BadRequestException("TotalSeats должен быть больше оставшихся мест");
+
         Title = title;
         Description = description;
         StartAt = startAt;
         EndAt = endAt;
+        TotalSeats = totalSeats;
+        AvailableSeats = totalSeats - bookedSeats;
     }
 
     /// <summary>
@@ -101,12 +110,12 @@ public class Event
     private static void ValidatePeriod(DateTime startAt, DateTime endAt)
     {
         if (endAt <= startAt)
-            throw new ArgumentException("EndAt должен быть позже StartAt");
+            throw new BadRequestException("EndAt должен быть позже StartAt");
     }
 
     private static void ValidateTotalSeats(int totalSeats)
     {
         if (totalSeats <= 0)
-            throw new ArgumentException("TotalSeats должен быть больше 0");
+            throw new BadRequestException("TotalSeats должен быть больше 0");
     }
 }

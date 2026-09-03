@@ -14,8 +14,6 @@ public class BookingProcessingBackgroundService : BackgroundService
     // Имитация обращения к внешней системе при обработке одной брони
     private static readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
     
-    private readonly SemaphoreSlim _processingSemaphore = new(1, 1); 
-
     private readonly IBookingService _bookingService;
     private readonly IEventService _eventService;
     private readonly ILogger<BookingProcessingBackgroundService> _logger;
@@ -72,12 +70,9 @@ public class BookingProcessingBackgroundService : BackgroundService
 
         // Имитация обращения к внешней системе
         await Task.Delay(ProcessingDelay, stoppingToken);
-        
-        await _processingSemaphore.WaitAsync(stoppingToken);
 
         try
         {
-
             if (_eventService.GetEventById(booking.EventId) is null)
             {
                 booking.Reject();
@@ -92,7 +87,8 @@ public class BookingProcessingBackgroundService : BackgroundService
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Штатная омена ошибка потока обработке брони");
+            _logger.LogInformation("Штатная отмена обработки брони {BookingId}", booking.Id);
+            return;
         }
         catch (Exception ex)
         {
@@ -104,10 +100,6 @@ public class BookingProcessingBackgroundService : BackgroundService
             var @event = _eventService.GetEventById(booking.EventId);
 
             @event?.ReleaseSeat();
-        }
-        finally
-        {
-            _processingSemaphore.Release();
         }
 
         _logger.LogInformation("Бронь {BookingId} переведена в статус {Status}", booking.Id, booking.Status);

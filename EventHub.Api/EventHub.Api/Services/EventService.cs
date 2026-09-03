@@ -17,36 +17,61 @@ public class EventService : IEventService
     // инстанс-хранилище вместо static), либо явный DI-скоуп per-test/per-collection.
     private static List<Event> Events { get; } = [];
 
+    // Events читается и изменяется одновременно из HTTP-потоков и из BookingProcessingBackgroundService.
+    private static readonly object EventsLock = new();
+
     public (List<Event> Items, int TotalCount) GetEvents(EventFilter eventFilter, int page, int pageSize)
     {
-        var filtered = Events.AsQueryable()
-            .TitleFilter(eventFilter.Title)
-            .FromDateFilter(eventFilter.From)
-            .ToDateFilter(eventFilter.To);
+        // Запросы отложенные, поэтому материализуем обе выборки внутри блокировки:
+        // иначе перечисление уедет за её пределы и снова словит конкурентный Add/RemoveAt.
+        lock (EventsLock)
+        {
+            var filtered = Events.AsQueryable()
+                .TitleFilter(eventFilter.Title)
+                .FromDateFilter(eventFilter.From)
+                .ToDateFilter(eventFilter.To);
 
-        var totalCount = filtered.Count();
-        var items = filtered.Page(page, pageSize).ToList();
+            var totalCount = filtered.Count();
+            var items = filtered.Page(page, pageSize).ToList();
 
-        return (items, totalCount);
+            return (items, totalCount);
+        }
     }
 
 
 
-    public Event? GetEventById(Guid id) => Events.FirstOrDefault(x => x.Id == id);
+    public Event? GetEventById(Guid id)
+    {
+        lock (EventsLock)
+        {
+            return Events.FirstOrDefault(x => x.Id == id);
+        }
+    }
 
     public Event CreateEvent(Event newEvent)
     {
-        Events.Add(newEvent);
+        lock (EventsLock)
+        {
+            Events.Add(newEvent);
+        }
+
         return newEvent;
     }
 
     public Event? UpdateEvent(Guid id, Event updatedEvent)
     {
-        var @event = Events.FirstOrDefault(x => x.Id == id);
-        
+        Event? @event;
+
+        lock (EventsLock)
+        {
+            @event = Events.FirstOrDefault(x => x.Id == id);
+        }
+
         if (@event is null)
             return null;
 
+        // Вне EventsLock: UpdateDetails синхронизируется собственным Event._seatsLock,
+        // а держать блокировку хранилища на время мутации одного события незачем.
         @event.UpdateDetails(
             updatedEvent.Title,
             updatedEvent.Description,
@@ -60,10 +85,13 @@ public class EventService : IEventService
 
     public bool DeleteEvent(Guid id)
     {
-        var index = Events.FindIndex(x => x.Id == id);
-        if (index == -1) return false;
+        lock (EventsLock)
+        {
+            var index = Events.FindIndex(x => x.Id == id);
+            if (index == -1) return false;
 
-        Events.RemoveAt(index);
-        return true;
+            Events.RemoveAt(index);
+            return true;
+        }
     }
 }

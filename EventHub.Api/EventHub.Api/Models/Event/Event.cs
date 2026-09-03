@@ -40,6 +40,9 @@ public class Event
     /// </summary>
     public int AvailableSeats { get; private set; }
 
+    // Места одного события мутируются из разных потоков
+    private readonly object _seatsLock = new();
+
     /// <summary>
     /// 
     /// </summary>
@@ -75,17 +78,20 @@ public class Event
         ValidatePeriod(startAt, endAt);
         ValidateTotalSeats(totalSeats);
 
-        // Проверяем новый totalSeats не уменьшается ли ниже уже забронированных мест
-        var bookedSeats = TotalSeats - AvailableSeats;
-        if (totalSeats < bookedSeats)
-            throw new BadRequestException("TotalSeats должен быть больше оставшихся мест");
+        lock (_seatsLock)
+        {
+            // Проверяем новый totalSeats не уменьшается ли ниже уже забронированных мест
+            var bookedSeats = TotalSeats - AvailableSeats;
+            if (totalSeats < bookedSeats)
+                throw new BadRequestException("TotalSeats должен быть больше оставшихся мест");
 
-        Title = title;
-        Description = description;
-        StartAt = startAt;
-        EndAt = endAt;
-        TotalSeats = totalSeats;
-        AvailableSeats = totalSeats - bookedSeats;
+            Title = title;
+            Description = description;
+            StartAt = startAt;
+            EndAt = endAt;
+            TotalSeats = totalSeats;
+            AvailableSeats = totalSeats - bookedSeats;
+        }
     }
 
     /// <summary>
@@ -95,16 +101,24 @@ public class Event
     /// <returns></returns>
     public bool TryReserveSeats(int count = 1)
     {
-        if (count > AvailableSeats)
-            return  false;
-        
-        AvailableSeats -= count;
-        return true;
+        // Проверка и списание должны быть атомарны, иначе два потока пройдут проверку
+        // по одному и тому же AvailableSeats и уйдут в минус (овербукинг).
+        lock (_seatsLock)
+        {
+            if (count > AvailableSeats)
+                return false;
+
+            AvailableSeats -= count;
+            return true;
+        }
     }
     
     public void ReleaseSeat(int count = 1)
     {
-        AvailableSeats += count;
+        lock (_seatsLock)
+        {
+            AvailableSeats += count;
+        }
     }
     
     private static void ValidatePeriod(DateTime startAt, DateTime endAt)

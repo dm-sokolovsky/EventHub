@@ -90,10 +90,13 @@ public class BookingProcessingBackgroundService : BackgroundService
 
             await _bookingService.UpdateBookingAsync(booking);
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Штатная омена ошибка потока обработке брони");
+        }
         catch (Exception ex)
         {
-            if (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
-                _logger.LogError(ex, "Непредвиденная ошибка при обработке брони {BookingId}", booking.Id);
+            _logger.LogError(ex, "Непредвиденная ошибка при обработке брони {BookingId}", booking.Id);
 
             booking.Reject();
             await _bookingService.UpdateBookingAsync(booking);

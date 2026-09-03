@@ -10,13 +10,17 @@ namespace EventHub.Api.Contracts;
 /// <param name="Description">Описание события (опционально)</param>
 /// <param name="StartAt">Дата и время начала</param>
 /// <param name="EndAt">Дата и время окончания</param>
-public record EventDto
+/// <param name="TotalSeats">Общее кол-во мест</param>
+/// <param name="AvailableSeats">Доступное кол-во мест</param>
+public record EventInfoDto
 (
     Guid Id,
     string Title,
     string? Description,
     DateTime StartAt,
-    DateTime EndAt
+    DateTime EndAt,
+    int TotalSeats,
+    int AvailableSeats
 );
 
 /// <summary>
@@ -31,7 +35,8 @@ public record EventUpsertDto
     [Required(ErrorMessage = "Title is required")] string Title,
     string? Description,
     [Required(ErrorMessage = "Start At is required")] DateTime? StartAt,
-    [Required(ErrorMessage = "End At is required")] DateTime? EndAt
+    [Required(ErrorMessage = "End At is required")] DateTime? EndAt,
+    [Required(ErrorMessage = "TotalSeats is required")] int TotalSeats
 ) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -40,6 +45,12 @@ public record EventUpsertDto
             yield return new ValidationResult(
                 "EndAt должен быть позже StartAt",
                 [nameof(EndAt), nameof(StartAt)]);
+
+        if (TotalSeats <= 0)
+            yield return new ValidationResult(
+                "TotalSeats должна быть больше 0",
+                [nameof(TotalSeats)]
+            );
     }
 }
 

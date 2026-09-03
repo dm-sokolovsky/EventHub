@@ -17,9 +17,9 @@ public class BookingServiceTests
         _bookingService = new BookingService(_eventService);
     }
 
-    private Event CreateEvent(string title)
+    private Event CreateTestEvent(string title, int totalSeats = 10)
     {
-        var @event = new Event(title, "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+        var @event = new Event(title, "desc", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), totalSeats);
         _eventService.CreateEvent(@event);
         return @event;
     }
@@ -27,7 +27,7 @@ public class BookingServiceTests
     [Fact]
     public async Task CreateBookingAsync_ForExistingEvent_ReturnsPendingBooking()
     {
-        var @event = CreateEvent($"booking_ok_{Guid.NewGuid()}");
+        var @event = CreateTestEvent($"booking_ok_{Guid.NewGuid()}");
 
         var booking = await _bookingService.CreateBookingAsync(@event.Id);
 
@@ -40,7 +40,7 @@ public class BookingServiceTests
     [Fact]
     public async Task CreateBookingAsync_MultipleBookingsForSameEvent_HaveUniqueIds()
     {
-        var @event = CreateEvent($"booking_multi_{Guid.NewGuid()}");
+        var @event = CreateTestEvent($"booking_multi_{Guid.NewGuid()}");
 
         var booking1 = await _bookingService.CreateBookingAsync(@event.Id);
         var booking2 = await _bookingService.CreateBookingAsync(@event.Id);
@@ -55,7 +55,7 @@ public class BookingServiceTests
     [Fact]
     public async Task GetBookingByIdAsync_ReturnsCorrectBooking()
     {
-        var @event = CreateEvent($"booking_get_{Guid.NewGuid()}");
+        var @event = CreateTestEvent($"booking_get_{Guid.NewGuid()}");
         var created = await _bookingService.CreateBookingAsync(@event.Id);
 
         var fetched = await _bookingService.GetBookingByIdAsync(created.Id);
@@ -70,7 +70,7 @@ public class BookingServiceTests
     [Fact]
     public async Task GetBookingByIdAsync_AfterConfirm_ReflectsUpdatedStatus()
     {
-        var @event = CreateEvent($"booking_confirm_{Guid.NewGuid()}");
+        var @event = CreateTestEvent($"booking_confirm_{Guid.NewGuid()}");
         var created = await _bookingService.CreateBookingAsync(@event.Id);
 
         created.Confirm();
@@ -85,7 +85,7 @@ public class BookingServiceTests
     [Fact]
     public async Task GetBookingByIdAsync_AfterReject_ReflectsUpdatedStatus()
     {
-        var @event = CreateEvent($"booking_reject_{Guid.NewGuid()}");
+        var @event = CreateTestEvent($"booking_reject_{Guid.NewGuid()}");
         var created = await _bookingService.CreateBookingAsync(@event.Id);
 
         created.Reject();
@@ -109,7 +109,7 @@ public class BookingServiceTests
     [Fact]
     public async Task CreateBookingAsync_ForDeletedEvent_ThrowsNotFoundException()
     {
-        var @event = CreateEvent($"booking_deleted_{Guid.NewGuid()}");
+        var @event = CreateTestEvent($"booking_deleted_{Guid.NewGuid()}");
         _eventService.DeleteEvent(@event.Id);
 
         await Assert.ThrowsAsync<NotFoundException>(
@@ -122,5 +122,103 @@ public class BookingServiceTests
         var result = await _bookingService.GetBookingByIdAsync(Guid.NewGuid());
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_DecreasesAvailableSeatsByOne()
+    {
+        var @event = CreateTestEvent($"booking_seats_dec_{Guid.NewGuid()}", totalSeats: 5);
+
+        await _bookingService.CreateBookingAsync(@event.Id);
+
+        Assert.Equal(4, @event.AvailableSeats);
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_UpToCapacity_AllSucceedWithUniqueIds()
+    {
+        var @event = CreateTestEvent($"booking_seats_capacity_{Guid.NewGuid()}", totalSeats: 3);
+
+        var booking1 = await _bookingService.CreateBookingAsync(@event.Id);
+        var booking2 = await _bookingService.CreateBookingAsync(@event.Id);
+        var booking3 = await _bookingService.CreateBookingAsync(@event.Id);
+
+        Assert.NotEqual(booking1.Id, booking2.Id);
+        Assert.NotEqual(booking2.Id, booking3.Id);
+        Assert.NotEqual(booking1.Id, booking3.Id);
+        Assert.Equal(0, @event.AvailableSeats);
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_AfterSeatsExhausted_ThrowsNoAvailableSeatsException()
+    {
+        var @event = CreateTestEvent($"booking_seats_exhausted_{Guid.NewGuid()}", totalSeats: 1);
+        await _bookingService.CreateBookingAsync(@event.Id);
+
+        await Assert.ThrowsAsync<NoAvailableSeatsException>(
+            () => _bookingService.CreateBookingAsync(@event.Id));
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_NoAvailableSeats_DoesNotChangeAvailableSeats()
+    {
+        var @event = CreateTestEvent($"booking_seats_unchanged_{Guid.NewGuid()}", totalSeats: 1);
+        await _bookingService.CreateBookingAsync(@event.Id);
+
+        await Assert.ThrowsAsync<NoAvailableSeatsException>(
+            () => _bookingService.CreateBookingAsync(@event.Id));
+
+        Assert.Equal(0, @event.AvailableSeats);
+    }
+
+    [Fact]
+    public void Confirm_SetsStatusConfirmedAndProcessedAt()
+    {
+        var booking = new Booking(Guid.NewGuid());
+
+        booking.Confirm();
+
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
+        Assert.NotNull(booking.ProcessedAt);
+    }
+
+    [Fact]
+    public void Reject_SetsStatusRejectedAndProcessedAt()
+    {
+        var booking = new Booking(Guid.NewGuid());
+
+        booking.Reject();
+
+        Assert.Equal(BookingStatus.Rejected, booking.Status);
+        Assert.NotNull(booking.ProcessedAt);
+    }
+
+    [Fact]
+    public async Task Reject_ThenReleaseSeat_RestoresAvailableSeats()
+    {
+        var @event = CreateTestEvent($"booking_release_restore_{Guid.NewGuid()}", totalSeats: 2);
+        var booking = await _bookingService.CreateBookingAsync(@event.Id);
+        Assert.Equal(1, @event.AvailableSeats);
+
+        booking.Reject();
+        @event.ReleaseSeat();
+
+        Assert.Equal(2, @event.AvailableSeats);
+    }
+
+    [Fact]
+    public async Task Reject_ThenReleaseSeat_AllowsNewBookingForSameSeat()
+    {
+        var @event = CreateTestEvent($"booking_release_new_{Guid.NewGuid()}", totalSeats: 1);
+        var firstBooking = await _bookingService.CreateBookingAsync(@event.Id);
+
+        firstBooking.Reject();
+        @event.ReleaseSeat();
+
+        var secondBooking = await _bookingService.CreateBookingAsync(@event.Id);
+
+        Assert.NotNull(secondBooking);
+        Assert.NotEqual(firstBooking.Id, secondBooking.Id);
+        Assert.Equal(0, @event.AvailableSeats);
     }
 }

@@ -21,7 +21,8 @@ public class EventServiceTests
     {
         var startAt = DateTime.UtcNow;
         var endAt = DateTime.UtcNow + TimeSpan.FromDays(1);
-        var @event = new Event("test_new", "test_new", startAt, endAt);
+        var totalSeats = 10;
+        var @event = new Event("test_new", "test_new", startAt, endAt, totalSeats);
 
         _eventService.CreateEvent(@event);
         var created = _eventService.GetEventById(@event.Id);
@@ -40,9 +41,10 @@ public class EventServiceTests
         var uniqueTitle = $"title_{Guid.NewGuid()}";
         var startAt = DateTime.UtcNow;
         var endAt = startAt + TimeSpan.FromDays(1);
-
-        var event1 = new Event(uniqueTitle, "desc1", startAt, endAt);
-        var event2 = new Event(uniqueTitle, "desc2", startAt, endAt);
+        var totalSeats = 10;
+        
+        var event1 = new Event(uniqueTitle, "desc1", startAt, endAt, totalSeats);
+        var event2 = new Event(uniqueTitle, "desc2", startAt, endAt, totalSeats);
 
         _eventService.CreateEvent(event1);
         _eventService.CreateEvent(event2);
@@ -59,7 +61,7 @@ public class EventServiceTests
     [Fact]
     public void EventService_GetEventById_ReturnsEvent()
     {
-        var @event = new Event("get_by_id", "get_by_id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+        var @event = new Event("get_by_id", "get_by_id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
         _eventService.CreateEvent(@event);
 
         var result = _eventService.GetEventById(@event.Id);
@@ -82,12 +84,14 @@ public class EventServiceTests
     {
         var startAt = DateTime.UtcNow;
         var endAt = startAt + TimeSpan.FromDays(1);
-        var original = new Event("update_original", "update_original", startAt, endAt);
+        var totalSeats = 10;
+        var original = new Event("update_original", "update_original", startAt, endAt, totalSeats);
         _eventService.CreateEvent(original);
 
         var newStartAt = startAt.AddDays(2);
         var newEndAt = endAt.AddDays(2);
-        var updatedEvent = new Event("update_new", "update_new", newStartAt, newEndAt);
+        var newTotalSeats = 12;
+        var updatedEvent = new Event("update_new", "update_new", newStartAt, newEndAt, newTotalSeats);
 
         var result = _eventService.UpdateEvent(original.Id, updatedEvent);
 
@@ -106,7 +110,7 @@ public class EventServiceTests
     [Fact]
     public void EventService_UpdateEvent_NotFound_ReturnsNull()
     {
-        var updatedEvent = new Event("no_such_event", "no_such_event", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+        var updatedEvent = new Event("no_such_event", "no_such_event", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
 
         var result = _eventService.UpdateEvent(Guid.NewGuid(), updatedEvent);
 
@@ -116,7 +120,7 @@ public class EventServiceTests
     [Fact]
     public void EventService_DeleteEvent_RemovesExistingEvent()
     {
-        var @event = new Event("to_delete", "to_delete", DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+        var @event = new Event("to_delete", "to_delete", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
         _eventService.CreateEvent(@event);
 
         var deleted = _eventService.DeleteEvent(@event.Id);

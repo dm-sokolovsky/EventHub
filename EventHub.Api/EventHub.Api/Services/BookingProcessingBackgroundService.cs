@@ -1,3 +1,5 @@
+using EventHub.Api.Models.Booking;
+
 namespace EventHub.Api.Services;
 
 /// <summary>
@@ -11,15 +13,18 @@ public class BookingProcessingBackgroundService : BackgroundService
 
     // Имитация обращения к внешней системе при обработке одной брони
     private static readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
-
+    
     private readonly IBookingService _bookingService;
+    private readonly IEventService _eventService;
     private readonly ILogger<BookingProcessingBackgroundService> _logger;
 
     public BookingProcessingBackgroundService(
         IBookingService bookingService,
+        IEventService eventService,
         ILogger<BookingProcessingBackgroundService> logger)
     {
         _bookingService = bookingService;
+        _eventService = eventService;
         _logger = logger;
     }
 
@@ -55,18 +60,48 @@ public class BookingProcessingBackgroundService : BackgroundService
     {
         var pendingBookings = await _bookingService.GetPendingBookingsAsync();
 
-        foreach (var booking in pendingBookings)
-        {
-            stoppingToken.ThrowIfCancellationRequested();
+        var tasks = pendingBookings.Select(booking => ProcessBookingAsync(booking, stoppingToken));
+        await Task.WhenAll(tasks); 
+    }
 
-            // Имитация обращения к внешней системе
-            await Task.Delay(ProcessingDelay, stoppingToken);
-            
-            booking.Confirm();
+    private async Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken)
+    {
+        stoppingToken.ThrowIfCancellationRequested();
+
+        // Имитация обращения к внешней системе
+        await Task.Delay(ProcessingDelay, stoppingToken);
+
+        try
+        {
+            if (_eventService.GetEventById(booking.EventId) is null)
+            {
+                booking.Reject();
+                _logger.LogWarning($"Не удалось найти событие с id = {booking.EventId}");
+            }
+            else
+            {
+                booking.Confirm();
+            }
 
             await _bookingService.UpdateBookingAsync(booking);
-
-            _logger.LogInformation("Бронь {BookingId} переведена в статус {Status}", booking.Id, booking.Status);
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Штатная отмена обработки брони {BookingId}", booking.Id);
+            return;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Непредвиденная ошибка при обработке брони {BookingId}", booking.Id);
+
+            booking.Reject();
+            await _bookingService.UpdateBookingAsync(booking);
+
+            var @event = _eventService.GetEventById(booking.EventId);
+
+            @event?.ReleaseSeat();
+        }
+
+        _logger.LogInformation("Бронь {BookingId} переведена в статус {Status}", booking.Id, booking.Status);
     }
 }

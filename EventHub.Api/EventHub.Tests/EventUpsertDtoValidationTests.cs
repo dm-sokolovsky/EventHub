@@ -28,7 +28,8 @@ public class EventUpsertDtoValidationTests
     {
         var startAt = DateTime.UtcNow;
         var endAt = startAt.AddHours(-1);
-        var dto = new EventUpsertDto("title", "desc", startAt, endAt);
+        var totalSeats = 0;
+        var dto = new EventUpsertDto("title", "desc", startAt, endAt, totalSeats);
 
         var results = dto.Validate(new ValidationContext(dto)).ToList();
 
@@ -40,7 +41,8 @@ public class EventUpsertDtoValidationTests
     {
         var startAt = DateTime.UtcNow;
         var endAt = startAt.AddHours(1);
-        var dto = new EventUpsertDto("title", "desc", startAt, endAt);
+        var totalSeats = 10;
+        var dto = new EventUpsertDto("title", "desc", startAt, endAt, totalSeats);
 
         var results = dto.Validate(new ValidationContext(dto));
 

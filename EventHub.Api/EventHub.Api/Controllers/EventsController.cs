@@ -28,7 +28,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <response code="400">Возвращается JSON-структура ApiBaseResult, если page или pageSize меньше 1</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResult<PaginatedResult<EventDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult<PaginatedResult<EventInfoDto>>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet]
     public IActionResult GetAllEvents([FromQuery] EventFilterDto eventFilterDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
@@ -43,13 +43,13 @@ public class EventsController(IEventService  eventService, IBookingService booki
         var (events, totalCount) = eventService.GetEvents(eventFilter, page, pageSize);
         var eventDtos = events.Select(e => e.ToDto()).ToList();
 
-        var result = new PaginatedResult<EventDto>(
+        var result = new PaginatedResult<EventInfoDto>(
             totalCount,
             eventDtos,
             page,
             pageSize);
 
-        var response = new ApiResult<PaginatedResult<EventDto>>
+        var response = new ApiResult<PaginatedResult<EventInfoDto>>
         {
             Data = result,
             Success = true,
@@ -69,7 +69,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <response code="404">Возвращается JSON-структура ApiBaseResult с деталями ответа</response>
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult<EventInfoDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpGet("{id}")]
     public IActionResult GetEventById(Guid id)
@@ -77,7 +77,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
         var result = eventService.GetEventById(id)
             ?? throw new NotFoundException($"Не удалось найти событие по {id}");
 
-        var response = new ApiResult<EventDto>
+        var response = new ApiResult<EventInfoDto>
         {
             Data = result.ToDto(),
             Success = true,
@@ -96,7 +96,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <response code="201">Возвращается JSON-структура ApiResult с деталями ответа</response>
     /// <response code="400">Возвращается стандартный ValidationProblemDetails</response>
     /// <returns></returns>
-    [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResult<EventInfoDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [Produces("application/json")]
     [HttpPost]
@@ -104,7 +104,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     {
         var created = eventService.CreateEvent(eventDto.ToEvent());
 
-        var response = new ApiResult<EventDto>
+        var response = new ApiResult<EventInfoDto>
         {
             Data = created.ToDto(),
             Success = true,
@@ -126,7 +126,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <returns></returns>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResult<EventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResult<EventInfoDto>), StatusCodes.Status200OK)]
     [Produces("application/json")]
     [HttpPut("{id}")]
     public IActionResult UpdateEvent(Guid id, [FromBody] EventUpsertDto eventDto)
@@ -134,7 +134,7 @@ public class EventsController(IEventService  eventService, IBookingService booki
         var result = eventService.UpdateEvent(id, eventDto.ToEvent())
             ?? throw new NotFoundException($"Не удалось найти событие по {id}");
 
-        var response = new ApiResult<EventDto>
+        var response = new ApiResult<EventInfoDto>
         {
             Data = result.ToDto(),
             Success = true,
@@ -183,15 +183,16 @@ public class EventsController(IEventService  eventService, IBookingService booki
     /// <param name="id"></param>
     /// <returns></returns>
     /// <exception cref="NotFoundException"></exception>
+    /// <exception cref="NoAvailableSeatsException"></exception>
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ApiBaseResult), StatusCodes.Status409Conflict)]
     [Produces("application/json")]
     [HttpPost("{id}/book")]
     public async Task<IActionResult> CreateBooking(Guid id)
     {
         var booking = await bookingService.CreateBookingAsync(id);
-
-
+        
         var response = new ApiResult<BookingDto>
         {
             Data = booking.ToDto(),

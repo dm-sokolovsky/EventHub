@@ -30,6 +30,10 @@ public class Booking
     /// </summary>
     public DateTime? ProcessedAt { get;  private set; }
 
+    public Event.Event Event { get; private set; } = null!;
+
+    private Booking() {}
+    
     /// <summary>
     /// Создание бронирование 
     /// </summary>

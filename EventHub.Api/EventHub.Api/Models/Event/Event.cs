@@ -9,11 +9,11 @@ public class Event
     /// Id события
     /// </summary>
     public Guid Id { get; private set; }
-    
+
     /// <summary>
     /// Заголовок события 
     /// </summary>
-    public string Title { get; private set; } 
+    public string Title { get; private set; } = null!;
 
     /// <summary>
     /// Описание события 
@@ -40,9 +40,13 @@ public class Event
     /// </summary>
     public int AvailableSeats { get; private set; }
 
+    public List<Booking.Booking> Bookings { get; private set; } = [];
+
     // Места одного события мутируются из разных потоков
     private readonly object _seatsLock = new();
 
+    private Event() {}
+    
     /// <summary>
     /// 
     /// </summary>

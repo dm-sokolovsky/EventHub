@@ -1,4 +1,4 @@
-using EventHub.Api.Models.Booking;
+using EventHub.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

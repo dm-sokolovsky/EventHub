@@ -1,81 +1,52 @@
 using System.Net;
 using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Models;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EventHub.Api.Common;
 
-public class GlobalExceptionHandlingMiddleware
+internal sealed class GlobalExceptionHandler : IExceptionHandler
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionHandlingMiddleware> _logger;
+    private readonly ILogger<GlobalExceptionHandler> _logger;
 
-    public GlobalExceptionHandlingMiddleware(
-        RequestDelegate next,
-        ILogger<GlobalExceptionHandlingMiddleware> logger
-        )
+    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
     {
-        _next = next;
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext httpContext)
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext context,
+        Exception exception,
+        CancellationToken cancellationToken)
     {
-        try
+        _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+
+        var (statusCode, title) = exception switch
         {
-            await _next(httpContext);
-        }
-        catch (Exception ex)
-        {
-            if (httpContext.Response.HasStarted)
+            NotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
+            ValidationException => (StatusCodes.Status400BadRequest, "Validation Error"),
+            NoAvailableSeatsException => (StatusCodes.Status409Conflict, "No Available Seats"),
+            _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
+        };
+
+        ProblemDetails problemDetails = exception is ValidationException validationEx
+            ? new ValidationProblemDetails(validationEx.Errors.ToDictionary(k => k.Key, v => v.Value.ToArray()))
             {
-                _logger.LogError(
-                    ex,
-                    "Exception after response started. Method={Method}, Path={Path}, RequestId={RequestId}",
-                    httpContext.Request.Method,
-                    httpContext.Request.Path,
-                    httpContext.Request.Headers["x-request-id"]);
-                return;
+                Status = statusCode,
+                Title = title,
+                Detail = exception.Message
             }
-
-            var statusCode = MapStatusCode(ex);
-
-            if (statusCode >= StatusCodes.Status500InternalServerError)
+            : new ProblemDetails
             {
-                _logger.LogError(
-                    ex,
-                    "Unhandled exception. Method={Method}, Path={Path}, RequestId={RequestId}",
-                    httpContext.Request.Method,
-                    httpContext.Request.Path,
-                    httpContext.Request.Headers["x-request-id"]);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "Request failed with {StatusCode}: {Message}. Method={Method}, Path={Path}, RequestId={RequestId}",
-                    statusCode,
-                    ex.Message,
-                    httpContext.Request.Method,
-                    httpContext.Request.Path,
-                    httpContext.Request.Headers["x-request-id"]);
-            }
-
-            httpContext.Response.StatusCode = statusCode;
-            httpContext.Response.ContentType = "application/json";
-
-            var error = new ApiBaseResult
-            {
-                Success = false,
-                StatusCode = (HttpStatusCode)statusCode,
-                Message = statusCode >= StatusCodes.Status500InternalServerError
-                    ? "Внутренняя ошибка сервера"
-                    : ex.Message
-
+                Status = statusCode,
+                Title = title,
+                Detail = exception.Message
             };
 
-            await httpContext.Response.WriteAsJsonAsync(error);
-        }
-    }
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
-    private static int MapStatusCode(Exception ex)
-        => ex is ApiException apiException ? apiException.StatusCode : StatusCodes.Status500InternalServerError;
+        return true;
+    }
 }

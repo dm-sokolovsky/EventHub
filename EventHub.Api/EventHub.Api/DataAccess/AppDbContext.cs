@@ -1,10 +1,9 @@
-using EventHub.Api.Models.Booking;
-using EventHub.Api.Models.Event;
+using EventHub.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.DataAccess;
 
-internal sealed class AppDbContext : DbContext
+public sealed class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : 
         base(options) { }

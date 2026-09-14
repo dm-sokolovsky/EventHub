@@ -32,7 +32,7 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
 
-        var body = await response.Content.ReadFromJsonAsync<ApiResult<EventInfoDto>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResult<EventInfo>>();
         Assert.NotNull(body);
         Assert.True(body!.Success);
         Assert.Equal(payload.title, body.Data.Title);
@@ -84,7 +84,7 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = await response.Content.ReadFromJsonAsync<ApiResult<PaginatedResult<EventInfoDto>>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResult<PaginatedResult<EventInfo>>>();
         Assert.NotNull(body);
         Assert.Equal(1, body!.Data.TotalCount);
         Assert.Equal(uniqueTitle, Assert.Single(body.Data.Items).Title);
@@ -134,7 +134,7 @@ public class EventsApiTests : IClassFixture<WebApplicationFactory<Program>>
         var createResponse = await _client.PostAsJsonAsync("/api/events", payload);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
-        var createdBody = await createResponse.Content.ReadFromJsonAsync<ApiResult<EventInfoDto>>();
+        var createdBody = await createResponse.Content.ReadFromJsonAsync<ApiResult<EventInfo>>();
         Assert.NotNull(createdBody);
         var eventId = createdBody!.Data.Id;
 

@@ -1,6 +1,18 @@
+using Microsoft.AspNetCore.Mvc;
+
 namespace EventHub.Api.Common.Exceptions;
 
-public class NotFoundException : ApiException
+public sealed class NotFoundException : Exception
 {
-    public NotFoundException(string message) : base(message, StatusCodes.Status404NotFound) { }
+    internal NotFoundException(string message) : base(message) { }
+    
+    internal ProblemDetails ToProblemDetails()
+        => new ProblemDetails
+        {
+            Status = StatusCodes.Status404NotFound,
+            Title = "Resource Not Found",
+            Detail = Message,
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5"
+        };
+    
 }

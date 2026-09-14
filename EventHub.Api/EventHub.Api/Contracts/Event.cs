@@ -12,16 +12,16 @@ namespace EventHub.Api.Contracts;
 /// <param name="EndAt">Дата и время окончания</param>
 /// <param name="TotalSeats">Общее кол-во мест</param>
 /// <param name="AvailableSeats">Доступное кол-во мест</param>
-public record EventInfoDto
-(
-    Guid Id,
-    string Title,
-    string? Description,
-    DateTime StartAt,
-    DateTime EndAt,
-    int TotalSeats,
-    int AvailableSeats
-);
+public sealed record EventInfo
+{
+    public required Guid Id { get; init; }
+    public required string Title { get; init; }
+    public string? Description { get; init; }
+    public required DateTime StartAt { get; init; }
+    public required DateTime EndAt { get; init; }
+    public required int TotalSeats { get; init; }
+    public required int AvailableSeats { get; init; }
+}
 
 /// <summary>
 /// DTO для создания и обновления события
@@ -30,7 +30,7 @@ public record EventInfoDto
 /// <param name="Description">Описание события (опционально)</param>
 /// <param name="StartAt">Дата и время начала</param>
 /// <param name="EndAt">Дата и время окончания</param>
-public record EventUpsertDto
+public sealed record EventUpsert
 (
     [Required(ErrorMessage = "Title is required")] string Title,
     string? Description,
@@ -55,12 +55,25 @@ public record EventUpsertDto
 }
 
 /// <summary>
+/// DTO для создания события 
+/// </summary>
+public sealed record CreateEvent
+{
+    public string? Title { get; init; }
+    public DateTime? StartAt { get; init; }
+    public DateTime? EndAt { get; init; }
+    public int? TotalSeats { get; init; }
+    public string? Description { get; init; }
+}
+
+
+/// <summary>
 /// DTO для фильтрации всех событий
 /// </summary>
 /// <param name="Title">Поиск по названию (регистронезависимый, частичное совпадение) </param>
 /// <param name="From">События, которые начинаются не раньше указанной даты</param>
 /// <param name="To">События, которые заканчиваются не позже указанной даты</param>
-public record EventFilterDto
+public sealed record EventFilter
 (
     string? Title,
     DateTime? From,

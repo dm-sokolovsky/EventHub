@@ -1,4 +1,6 @@
-using EventHub.Api.Models.Booking;
+using EventHub.Api.DataAccess;
+using EventHub.Api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Services;
 
@@ -14,17 +16,14 @@ public class BookingProcessingBackgroundService : BackgroundService
     // Имитация обращения к внешней системе при обработке одной брони
     private static readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);
     
-    private readonly IBookingService _bookingService;
-    private readonly IEventService _eventService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<BookingProcessingBackgroundService> _logger;
 
     public BookingProcessingBackgroundService(
-        IBookingService bookingService,
-        IEventService eventService,
+        IServiceScopeFactory scopeFactory,
         ILogger<BookingProcessingBackgroundService> logger)
     {
-        _bookingService = bookingService;
-        _eventService = eventService;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -34,7 +33,22 @@ public class BookingProcessingBackgroundService : BackgroundService
         {
             try
             {
-                await ProcessPendingBookingsAsync(stoppingToken);
+                
+                List<Guid> pendingBookingIds;
+                
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    pendingBookingIds = await context.Bookings
+                        .Where(b => b.Status == BookingStatus.Pending)
+                        .Select(b => b.Id)
+                        .ToListAsync(stoppingToken);
+                }
+
+                var tasks = pendingBookingIds.Select(id =>
+                    ProcessBookingAsync(id, stoppingToken));
+
+                await Task.WhenAll(tasks);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -56,52 +70,71 @@ public class BookingProcessingBackgroundService : BackgroundService
         }
     }
 
-    private async Task ProcessPendingBookingsAsync(CancellationToken stoppingToken)
+    private async Task ProcessBookingAsync(Guid bookingId, CancellationToken stoppingToken)
     {
-        var pendingBookings = await _bookingService.GetPendingBookingsAsync();
-
-        var tasks = pendingBookings.Select(booking => ProcessBookingAsync(booking, stoppingToken));
-        await Task.WhenAll(tasks); 
-    }
-
-    private async Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken)
-    {
-        stoppingToken.ThrowIfCancellationRequested();
-
-        // Имитация обращения к внешней системе
-        await Task.Delay(ProcessingDelay, stoppingToken);
-
         try
         {
-            if (_eventService.GetEventById(booking.EventId) is null)
+            await Task.Delay(ProcessingDelay, stoppingToken);
+
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var booking = await context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+            if (booking == null || booking.Status != BookingStatus.Pending)
+                return;
+
+            var @event = await context.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+            if (@event == null)
             {
                 booking.Reject();
-                _logger.LogWarning($"Не удалось найти событие с id = {booking.EventId}");
-            }
-            else
-            {
-                booking.Confirm();
+                await context.SaveChangesAsync(stoppingToken);
+
+                _logger.LogWarning(
+                    "Booking {BookingId} rejected: event {EventId} not found",
+                    booking.Id, booking.EventId);
+
+                return;
             }
 
-            await _bookingService.UpdateBookingAsync(booking);
+            booking.Confirm();
+            await context.SaveChangesAsync(stoppingToken);
+
+            _logger.LogInformation(
+                "Booking {BookingId} for event {EventId} processed → {Status}",
+                booking.Id, booking.EventId, booking.Status);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Штатная отмена обработки брони {BookingId}", booking.Id);
-            return;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Непредвиденная ошибка при обработке брони {BookingId}", booking.Id);
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            booking.Reject();
-            await _bookingService.UpdateBookingAsync(booking);
+                var booking = await context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+                if (booking != null)
+                {
+                    booking.Reject();
 
-            var @event = _eventService.GetEventById(booking.EventId);
+                    var @event = await context.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+                    if (@event != null)
+                        @event.ReleaseSeats();
 
-            @event?.ReleaseSeat();
+                    await context.SaveChangesAsync(stoppingToken);
+                }
+
+                _logger.LogError(ex,
+                    "Booking {BookingId} rejected due to processing error",
+                    bookingId);
+            }
+            catch (Exception releaseEx)
+            {
+                _logger.LogError(releaseEx,
+                    "Failed to reject booking {BookingId} after error",
+                    bookingId);
+            }
         }
-
-        _logger.LogInformation("Бронь {BookingId} переведена в статус {Status}", booking.Id, booking.Status);
     }
 }

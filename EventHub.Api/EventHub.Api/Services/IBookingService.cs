@@ -1,4 +1,5 @@
-using EventHub.Api.Models.Booking;
+using EventHub.Api.Contracts;
+using EventHub.Api.Models;
 
 namespace EventHub.Api.Services;
 
@@ -13,23 +14,13 @@ public interface IBookingService
     /// <param name="eventId">Id события</param>
     /// <returns></returns>
     /// <exception cref="EventHub.Api.Common.Exceptions.NotFoundException">Событие не найдено или было удалено</exception>
-    Task<Booking> CreateBookingAsync(Guid eventId);
+    Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Получение брони по идентификатору
     /// </summary>
     /// <param name="bookingId">Id брони</param>
     /// <returns></returns>
-    Task<Booking?> GetBookingByIdAsync(Guid bookingId);
-
-    /// <summary>
-    /// Получение всех броней в статусе Pending
-    /// </summary>
-    Task<IReadOnlyList<Booking>> GetPendingBookingsAsync();
-
-    /// <summary>
-    /// Сохранение обновлённой брони в хранилище
-    /// </summary>
-    /// <param name="booking">Обновлённая бронь</param>
-    Task UpdateBookingAsync(Booking booking);
+    Task<BookingInfo?> GetBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default);
+    
 }

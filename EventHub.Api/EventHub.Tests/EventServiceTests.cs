@@ -1,131 +1,760 @@
-using EventHub.Api.Models;
-using EventHub.Api.Models.Event;
+using EventHub.Api.Common.Exceptions;
+using EventHub.Api.Contracts;
+using EventHub.Api.DataAccess;
 using EventHub.Api.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EventHub.Tests;
 
-[Collection("EventService collection")]
-public class EventServiceTests
+public sealed class EventServiceTests : IDisposable
 {
-    private readonly IEnumerable<Event> _events;
-    private readonly EventService _eventService;
+    private static readonly EventFilter EmptyFilter = new(null, null, null);
 
-    public EventServiceTests(EventServiceFixture fixture)
+    private readonly ServiceProvider _serviceProvider;
+    private readonly IServiceScope _scope;
+    private readonly IEventService _eventService;
+
+    public EventServiceTests()
     {
-        _events = fixture.Events;
-        _eventService = fixture.EventService;
+        var dbName = Guid.NewGuid().ToString();
+        var services = new ServiceCollection();
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IEventService, EventService>();
+
+        _serviceProvider = services.BuildServiceProvider();
+        _scope = _serviceProvider.CreateScope();
+        _eventService = _scope.ServiceProvider.GetRequiredService<IEventService>();
     }
 
-    [Fact]
-    public void EventService_AddEvent()
+    public void Dispose()
     {
-        var startAt = DateTime.UtcNow;
-        var endAt = DateTime.UtcNow + TimeSpan.FromDays(1);
-        var totalSeats = 10;
-        var @event = new Event("test_new", "test_new", startAt, endAt, totalSeats);
-
-        _eventService.CreateEvent(@event);
-        var created = _eventService.GetEventById(@event.Id);
-
-        Assert.NotNull(created);
-        Assert.Equal(@event.Id, created.Id);
-        Assert.Equal("test_new", created.Title);
-        Assert.Equal("test_new", created.Description);
-        Assert.Equal(startAt, created.StartAt);
-        Assert.Equal(endAt, created.EndAt);
+        _scope.Dispose();
+        _serviceProvider.Dispose();
     }
 
-    [Fact]
-    public void EventService_GetAllEvents()
-    {
-        var uniqueTitle = $"title_{Guid.NewGuid()}";
-        var startAt = DateTime.UtcNow;
-        var endAt = startAt + TimeSpan.FromDays(1);
-        var totalSeats = 10;
-        
-        var event1 = new Event(uniqueTitle, "desc1", startAt, endAt, totalSeats);
-        var event2 = new Event(uniqueTitle, "desc2", startAt, endAt, totalSeats);
-
-        _eventService.CreateEvent(event1);
-        _eventService.CreateEvent(event2);
-
-        var filter = new EventFilter(uniqueTitle, null, null);
-        var (items, totalCount) = _eventService.GetEvents(filter, page: 1, pageSize: 10);
-
-        Assert.Equal(2, totalCount);
-        Assert.Equal(2, items.Count);
-        Assert.Contains(items, e => e.Id == event1.Id);
-        Assert.Contains(items, e => e.Id == event2.Id);
-    }
+    #region CreateEventAsync Tests
 
     [Fact]
-    public void EventService_GetEventById_ReturnsEvent()
+    public async Task CreateEventAsync_WithValidData_ReturnsEventInfo()
     {
-        var @event = new Event("get_by_id", "get_by_id", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
-        _eventService.CreateEvent(@event);
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "Test Event",
+            Description = "Test Description",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        };
 
-        var result = _eventService.GetEventById(@event.Id);
+        var result = await _eventService.CreateEventAsync(createEvent);
 
         Assert.NotNull(result);
-        Assert.Equal(@event.Id, result.Id);
-        Assert.Equal("get_by_id", result.Title);
+        Assert.NotEqual(Guid.Empty, result.Id);
+        Assert.Equal("Test Event", result.Title);
+        Assert.Equal("Test Description", result.Description);
+        Assert.Equal(futureDate, result.StartAt);
+        Assert.Equal(futureDate.AddHours(2), result.EndAt);
     }
 
     [Fact]
-    public void EventService_GetEventById_NotFound_ReturnsNull()
+    public async Task CreateEventAsync_WithNullTitle_ThrowsValidationException()
     {
-        var result = _eventService.GetEventById(Guid.NewGuid());
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = null,
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        };
 
-        Assert.Null(result);
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("Title", exception.Errors.Keys);
     }
 
     [Fact]
-    public void EventService_UpdateEvent()
+    public async Task CreateEventAsync_WithEmptyTitle_ThrowsValidationException()
     {
-        var startAt = DateTime.UtcNow;
-        var endAt = startAt + TimeSpan.FromDays(1);
-        var totalSeats = 10;
-        var original = new Event("update_original", "update_original", startAt, endAt, totalSeats);
-        _eventService.CreateEvent(original);
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "   ",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        };
 
-        var newStartAt = startAt.AddDays(2);
-        var newEndAt = endAt.AddDays(2);
-        var newTotalSeats = 12;
-        var updatedEvent = new Event("update_new", "update_new", newStartAt, newEndAt, newTotalSeats);
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("Title", exception.Errors.Keys);
+    }
 
-        var result = _eventService.UpdateEvent(original.Id, updatedEvent);
+    [Fact]
+    public async Task CreateEventAsync_WithNullStartAt_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "Test Event",
+            StartAt = null,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        };
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("StartAt", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_WithNullEndAt_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "Test Event",
+            StartAt = futureDate,
+            EndAt = null,
+            TotalSeats = 10,
+        };
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("EndAt", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_WithPastStartAt_ThrowsValidationException()
+    {
+        var pastDate = DateTime.UtcNow.AddDays(-1);
+        var createEvent = new CreateEvent
+        {
+            Title = "Test Event",
+            StartAt = pastDate,
+            EndAt = pastDate.AddHours(2),
+            TotalSeats = 10,
+        };
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("StartAt", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_WithEndAtBeforeStartAt_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "Test Event",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(-1),
+            TotalSeats = 10,
+        };
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("EndAt", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_WithEndAtEqualToStartAt_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "Test Event",
+            StartAt = futureDate,
+            EndAt = futureDate,
+            TotalSeats = 10,
+        };
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _eventService.CreateEventAsync(createEvent));
+        Assert.Contains("EndAt", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_WithTitleWhitespace_TrimsTitleAndCreatesEvent()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createEvent = new CreateEvent
+        {
+            Title = "  Test Event  ",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        };
+
+        var result = await _eventService.CreateEventAsync(createEvent);
+
+        Assert.Equal("Test Event", result.Title);
+    }
+
+    #endregion
+
+    #region GetEventByIdAsync Tests
+
+    [Fact]
+    public async Task GetEventByIdAsync_WithValidId_ReturnsEventInfo()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Test Event",
+            Description = "Test Description",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetEventByIdAsync(createdEvent.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(original.Id, result.Id);
-        Assert.Equal("update_new", result.Title);
-        Assert.Equal("update_new", result.Description);
-        Assert.Equal(newStartAt, result.StartAt);
-        Assert.Equal(newEndAt, result.EndAt);
-
-        var fetched = _eventService.GetEventById(original.Id);
-        Assert.NotNull(fetched);
-        Assert.Equal("update_new", fetched.Title);
+        Assert.Equal(createdEvent.Id, result.Id);
+        Assert.Equal("Test Event", result.Title);
     }
 
     [Fact]
-    public void EventService_UpdateEvent_NotFound_ReturnsNull()
+    public async Task GetEventByIdAsync_WithInvalidId_ThrowsNotFoundException()
     {
-        var updatedEvent = new Event("no_such_event", "no_such_event", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
+        var invalidId = Guid.NewGuid();
 
-        var result = _eventService.UpdateEvent(Guid.NewGuid(), updatedEvent);
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _eventService.GetEventByIdAsync(invalidId));
+        Assert.Equal("Event not found", exception.Message);
+    }
 
-        Assert.Null(result);
+    #endregion
+
+    #region GetAllEventsAsync Tests
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithNoEvents_ReturnsEmptyArray()
+    {
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter);
+
+        Assert.NotNull(result);
+        Assert.Empty(result.Items);
+        Assert.Equal(0, result.TotalCount);
     }
 
     [Fact]
-    public void EventService_DeleteEvent_RemovesExistingEvent()
+    public async Task GetAllEventsAsync_WithMultipleEvents_ReturnsAllEvents()
     {
-        var @event = new Event("to_delete", "to_delete", DateTime.UtcNow, DateTime.UtcNow.AddDays(1), 10);
-        _eventService.CreateEvent(@event);
+        var futureDate1 = DateTime.UtcNow.AddDays(1);
+        var futureDate2 = DateTime.UtcNow.AddDays(2);
 
-        var deleted = _eventService.DeleteEvent(@event.Id);
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 1",
+            StartAt = futureDate1,
+            EndAt = futureDate1.AddHours(2),
+            TotalSeats = 10,
+        });
 
-        Assert.True(deleted);
-        Assert.Null(_eventService.GetEventById(@event.Id));
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 2",
+            StartAt = futureDate2,
+            EndAt = futureDate2.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(2, result.Items.Length);
     }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithFromFilter_ReturnsFilteredEvents()
+    {
+        var futureDate1 = DateTime.UtcNow.AddDays(1);
+        var futureDate2 = DateTime.UtcNow.AddDays(2);
+        var filterDate = futureDate1.AddHours(1);
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 1",
+            StartAt = futureDate1,
+            EndAt = futureDate1.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 2",
+            StartAt = futureDate2,
+            EndAt = futureDate2.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(new EventFilter(null, filterDate, null));
+
+        Assert.Single(result.Items);
+        Assert.Equal("Event 2", result.Items[0].Title);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithToFilter_ReturnsFilteredEvents()
+    {
+        var futureDate1 = DateTime.UtcNow.AddDays(1);
+        var futureDate2 = DateTime.UtcNow.AddDays(2);
+        var filterDate = futureDate1.AddHours(3);
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 1",
+            StartAt = futureDate1,
+            EndAt = futureDate1.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 2",
+            StartAt = futureDate2,
+            EndAt = futureDate2.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(new EventFilter(null, null, filterDate));
+
+        Assert.Single(result.Items);
+        Assert.Equal("Event 1", result.Items[0].Title);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithTitleFilter_ReturnsFilteredEvents()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Conference 2024",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Meeting Q1",
+            StartAt = futureDate.AddDays(1),
+            EndAt = futureDate.AddDays(1).AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(new EventFilter("Conference", null, null));
+
+        Assert.Single(result.Items);
+        Assert.Equal("Conference 2024", result.Items[0].Title);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithTitleFilter_IsCaseInsensitive()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Conference 2024",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(new EventFilter("conference", null, null));
+
+        Assert.Single(result.Items);
+        Assert.Equal("Conference 2024", result.Items[0].Title);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithMultipleFilters_ReturnsFilteredEvents()
+    {
+        var baseDate = DateTime.UtcNow.AddDays(1);
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Conference 2024",
+            StartAt = baseDate,
+            EndAt = baseDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Conference 2025",
+            StartAt = baseDate.AddDays(5),
+            EndAt = baseDate.AddDays(5).AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(
+            new EventFilter("Conference", baseDate.AddDays(2), baseDate.AddDays(6)));
+
+        Assert.Single(result.Items);
+        Assert.Equal("Conference 2025", result.Items[0].Title);
+    }
+
+    #endregion
+
+    #region Pagination Tests
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithDefaultPagination_ReturnsFirstPageWithDefaultPageSize()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 15; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter);
+
+        Assert.Equal(15, result.TotalCount);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(10, result.Items.Length);
+        Assert.Equal(2, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithCustomPageSize_ReturnsCorrectNumberOfItems()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 25; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, page: 1, pageSize: 5);
+
+        Assert.Equal(25, result.TotalCount);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(5, result.PageSize);
+        Assert.Equal(5, result.Items.Length);
+        Assert.Equal(5, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithSecondPage_ReturnsCorrectItems()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 25; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, page: 2, pageSize: 10);
+
+        Assert.Equal(25, result.TotalCount);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(10, result.Items.Length);
+        Assert.Equal(3, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithLastPagePartialResults_ReturnsRemainingItems()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 23; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, page: 3, pageSize: 10);
+
+        Assert.Equal(23, result.TotalCount);
+        Assert.Equal(3, result.Page);
+        Assert.Equal(10, result.PageSize);
+        Assert.Equal(3, result.Items.Length);
+        Assert.Equal(3, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithPageBeyondTotal_ReturnsEmptyItems()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 5; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, page: 10, pageSize: 10);
+
+        Assert.Equal(5, result.TotalCount);
+        Assert.Equal(10, result.Page);
+        Assert.Equal(10, result.PageSize);
+        Assert.Empty(result.Items);
+        Assert.Equal(1, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithPaginationAndFilters_ReturnsPaginatedFilteredResults()
+    {
+        var baseDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 30; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Conference {i}",
+                StartAt = baseDate.AddDays(i),
+                EndAt = baseDate.AddDays(i).AddHours(2),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(
+            new EventFilter("Conference", null, null),
+            page: 2,
+            pageSize: 5);
+
+        Assert.Equal(30, result.TotalCount);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(5, result.PageSize);
+        Assert.Equal(5, result.Items.Length);
+        Assert.Equal(6, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_WithPaginationPageSizeOne_ReturnsOneItemPerPage()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 3; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, page: 2, pageSize: 1);
+
+        Assert.Equal(3, result.TotalCount);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(1, result.PageSize);
+        Assert.Single(result.Items);
+        Assert.Equal(3, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_TotalPagesCalculation_IsCorrect()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        for (int i = 1; i <= 37; i++)
+        {
+            await _eventService.CreateEventAsync(new CreateEvent
+            {
+                Title = $"Event {i}",
+                StartAt = futureDate.AddHours(i),
+                EndAt = futureDate.AddHours(i + 1),
+                TotalSeats = 10,
+            });
+        }
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, pageSize: 10);
+
+        Assert.Equal(4, result.TotalPages);
+    }
+
+    [Fact]
+    public async Task GetAllEventsAsync_FirstPageIsOne_NotZero()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event 1",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(1),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.GetAllEventsAsync(EmptyFilter, page: 1);
+
+        Assert.Equal(1, result.Page);
+    }
+
+    #endregion
+
+    #region UpdateEventAsync Tests
+
+    [Fact]
+    public async Task UpdateEventAsync_WithValidData_UpdatesEvent()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Original Event",
+            Description = "Original Description",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var newFutureDate = DateTime.UtcNow.AddDays(2);
+        var updateEvent = new EventUpsert("Updated Event", "Updated Description", newFutureDate, newFutureDate.AddHours(3), 10);
+
+        var result = await _eventService.UpdateEventAsync(createdEvent.Id, updateEvent);
+
+        Assert.Equal(createdEvent.Id, result.Id);
+        Assert.Equal("Updated Event", result.Title);
+        Assert.Equal("Updated Description", result.Description);
+        Assert.Equal(newFutureDate, result.StartAt);
+        Assert.Equal(newFutureDate.AddHours(3), result.EndAt);
+    }
+
+    [Fact]
+    public async Task UpdateEventAsync_WithInvalidId_ThrowsNotFoundException()
+    {
+        var invalidId = Guid.NewGuid();
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var updateEvent = new EventUpsert("Updated Event", null, futureDate, futureDate.AddHours(2), 10);
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() =>
+            _eventService.UpdateEventAsync(invalidId, updateEvent));
+        Assert.Equal("Event not found", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateEventAsync_WithNullTitle_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Original Event",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var updateEvent = new EventUpsert(null!, null, futureDate, futureDate.AddHours(2), 10);
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            _eventService.UpdateEventAsync(createdEvent.Id, updateEvent));
+        Assert.Contains("Title", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task UpdateEventAsync_WithPastStartAt_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Original Event",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var pastDate = DateTime.UtcNow.AddDays(-1);
+        var updateEvent = new EventUpsert("Updated Event", null, pastDate, pastDate.AddHours(2), 10);
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            _eventService.UpdateEventAsync(createdEvent.Id, updateEvent));
+        Assert.Contains("StartAt", exception.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task UpdateEventAsync_WithEndAtBeforeStartAt_ThrowsValidationException()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Original Event",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var updateEvent = new EventUpsert("Updated Event", null, futureDate, futureDate.AddHours(-1), 10);
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            _eventService.UpdateEventAsync(createdEvent.Id, updateEvent));
+        Assert.Contains("EndAt", exception.Errors.Keys);
+    }
+
+    #endregion
+
+    #region DeleteEventAsync Tests
+
+    [Fact]
+    public async Task DeleteEventAsync_WithValidId_ReturnsTrue()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event to Delete",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        var result = await _eventService.DeleteEventAsync(createdEvent.Id);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task DeleteEventAsync_WithInvalidId_ReturnsFalse()
+    {
+        var invalidId = Guid.NewGuid();
+
+        var result = await _eventService.DeleteEventAsync(invalidId);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task DeleteEventAsync_DeletedEventCannotBeRetrieved()
+    {
+        var futureDate = DateTime.UtcNow.AddDays(1);
+        var createdEvent = await _eventService.CreateEventAsync(new CreateEvent
+        {
+            Title = "Event to Delete",
+            StartAt = futureDate,
+            EndAt = futureDate.AddHours(2),
+            TotalSeats = 10,
+        });
+
+        await _eventService.DeleteEventAsync(createdEvent.Id);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _eventService.GetEventByIdAsync(createdEvent.Id));
+    }
+
+    #endregion
 }

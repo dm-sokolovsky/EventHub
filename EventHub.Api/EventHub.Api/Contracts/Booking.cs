@@ -1,6 +1,6 @@
-using EventHub.Api.Models.Booking;
+using EventHub.Api.Models;
 
-namespace EventHub.Api.Contracts.Booking;
+namespace EventHub.Api.Contracts;
 
 /// <summary>
 /// DTO для отображения брони 
@@ -10,10 +10,11 @@ namespace EventHub.Api.Contracts.Booking;
 /// <param name="Status">Статус брони</param>
 /// <param name="CreatedAt">Дата и время создания брони</param>
 /// <param name="ProcessedAt">Дата и время обработки брони</param>
-public record BookingDto(
-    Guid Id,
-    Guid EventId,
-    BookingStatus Status,
-    DateTime CreatedAt,
-    DateTime? ProcessedAt
-);
+public record BookingInfo
+{
+    public required Guid Id { get; init; }
+    public required Guid EventId { get; init; }
+    public required BookingStatus Status { get; init; }
+    public required DateTime CreatedAt { get; init; }
+    public DateTime? ProcessedAt { get; init; }
+}

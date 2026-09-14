@@ -1,97 +1,101 @@
+using EventHub.Api.Common.Exceptions;
+using EventHub.Api.Contracts;
+using EventHub.Api.DataAccess;
 using EventHub.Api.Models;
-using EventHub.Api.Extensions;
-using EventHub.Api.Extensions.Event;
-using EventHub.Api.Models.Event;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Services;
 
-public class EventService : IEventService
+public sealed class EventService : IEventService
 {
+
+    private readonly AppDbContext _context;
+
+    public EventService(AppDbContext context)
+    {
+        _context = context;
+    }
     
-    // Коллекция для манипуляции над событиями
-    // TODO: static-состояние расшарено между всеми экземплярами EventService в рамках процесса,
-    // включая параллельные тесты (EventHub.Tests, EventHub.IntegrationTests). Сейчас тесты
-    // изолируются только за счёт Guid.NewGuid()-уникальных Title в фильтрах — это хрупко и не
-    // защищает от коллизий, если тесты когда-нибудь начнут проверять totalCount/список без
-    // фильтра. Нужен либо реальный сброс между тестами (метод EventService.Reset()/новый
-    // инстанс-хранилище вместо static), либо явный DI-скоуп per-test/per-collection.
-    private static List<Event> Events { get; } = [];
-
-    // Events читается и изменяется одновременно из HTTP-потоков и из BookingProcessingBackgroundService.
-    private static readonly object EventsLock = new();
-
-    public (List<Event> Items, int TotalCount) GetEvents(EventFilter eventFilter, int page, int pageSize)
+    public async Task<EventInfo> CreateEventAsync(CreateEvent request, CancellationToken cancellationToken = default)
     {
-        // Запросы отложенные, поэтому материализуем обе выборки внутри блокировки:
-        // иначе перечисление уедет за её пределы и снова словит конкурентный Add/RemoveAt.
-        lock (EventsLock)
+        var @event = Event.Create(request.Title, request.StartAt, request.EndAt, request.TotalSeats, request.Description);
+        await _context.Events.AddAsync(@event, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        return ToInfo(@event);
+    }
+    
+    public async Task<EventInfo> GetEventByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var @event = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
+                     ?? throw new NotFoundException("Event not found");
+
+        return ToInfo(@event);
+    }
+    
+    public async Task<PaginatedResult<EventInfo>> GetAllEventsAsync(
+        EventFilter eventFilter, 
+        int page = 1,
+        int pageSize = 10, 
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Events.AsQueryable();
+
+        if (eventFilter.From.HasValue)
+            query = query.Where(e => e.StartAt >= eventFilter.From.Value);
+
+        if (eventFilter.To.HasValue)
+            query = query.Where(e => e.StartAt <= eventFilter.To.Value);
+
+        if (!string.IsNullOrWhiteSpace(eventFilter.Title))
+            query = query.Where(e => e.Title.ToLower().Contains(eventFilter.Title.ToLower()));
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PaginatedResult<EventInfo>
         {
-            var filtered = Events.AsQueryable()
-                .TitleFilter(eventFilter.Title)
-                .FromDateFilter(eventFilter.From)
-                .ToDateFilter(eventFilter.To);
+            Items = items.Select(ToInfo).ToArray(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+    
+    public async Task<EventInfo> UpdateEventAsync(Guid id, EventUpsert request, CancellationToken cancellationToken = default)
+    {
+        var @event = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
+                     ?? throw new NotFoundException("Event not found");
 
-            var totalCount = filtered.Count();
-            var items = filtered.Page(page, pageSize).ToList();
+        @event.Update(request.Title, request.StartAt, request.EndAt, request.Description);
+        await _context.SaveChangesAsync(cancellationToken);
 
-            return (items, totalCount);
-        }
+        return ToInfo(@event);
     }
 
-
-
-    public Event? GetEventById(Guid id)
+    public async Task<bool> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        lock (EventsLock)
-        {
-            return Events.FirstOrDefault(x => x.Id == id);
-        }
+        var @event = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        if (@event == null)
+            return false;
+
+        _context.Events.Remove(@event);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
-    public Event CreateEvent(Event newEvent)
+    
+    private static EventInfo ToInfo(Event @event) => new()
     {
-        lock (EventsLock)
-        {
-            Events.Add(newEvent);
-        }
-
-        return newEvent;
-    }
-
-    public Event? UpdateEvent(Guid id, Event updatedEvent)
-    {
-        Event? @event;
-
-        lock (EventsLock)
-        {
-            @event = Events.FirstOrDefault(x => x.Id == id);
-        }
-
-        if (@event is null)
-            return null;
-
-        // Вне EventsLock: UpdateDetails синхронизируется собственным Event._seatsLock,
-        // а держать блокировку хранилища на время мутации одного события незачем.
-        @event.UpdateDetails(
-            updatedEvent.Title,
-            updatedEvent.Description,
-            updatedEvent.StartAt,
-            updatedEvent.EndAt,
-            updatedEvent.TotalSeats
-            );
-        
-        return @event;
-    }
-
-    public bool DeleteEvent(Guid id)
-    {
-        lock (EventsLock)
-        {
-            var index = Events.FindIndex(x => x.Id == id);
-            if (index == -1) return false;
-
-            Events.RemoveAt(index);
-            return true;
-        }
-    }
+        Id = @event.Id,
+        Title = @event.Title,
+        StartAt = @event.StartAt,
+        EndAt = @event.EndAt,
+        TotalSeats = @event.TotalSeats,
+        AvailableSeats = @event.AvailableSeats,
+        Description = @event.Description
+    };
 }

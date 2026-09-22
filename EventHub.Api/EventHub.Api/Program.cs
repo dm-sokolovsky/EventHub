@@ -1,6 +1,8 @@
 using System.Reflection;
 using EventHub.Api.Common;
 using EventHub.Api.DataAccess;
+using EventHub.Api.DataAccess.Repositories;
+using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Endpoints;
 using EventHub.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,9 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IBookingService, BookingService>();

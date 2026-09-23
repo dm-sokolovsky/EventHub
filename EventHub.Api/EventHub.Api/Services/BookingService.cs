@@ -2,21 +2,22 @@ using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Contracts;
 using EventHub.Api.DataAccess;
 using EventHub.Api.DataAccess.Repositories;
+using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Services;
 
 public sealed class BookingService(
-    BookingRepository bookingRepository,
-    EventRepository eventRepository
+    IBookingRepository bookingRepository,
+    IEventRepository eventRepository
         ) : IBookingService
 {
 
     private static readonly SemaphoreSlim BookingLock = new(1, 1);
 
-    private readonly BookingRepository _bookingRepository = bookingRepository;
-    private readonly EventRepository _eventRepository = eventRepository;
+    private readonly IBookingRepository _bookingRepository = bookingRepository;
+    private readonly IEventRepository _eventRepository = eventRepository;
 
     public async Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default)
     {

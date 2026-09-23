@@ -2,15 +2,16 @@ using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Contracts;
 using EventHub.Api.DataAccess;
 using EventHub.Api.DataAccess.Repositories;
+using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Services;
 
-public sealed class EventService(EventRepository eventRepository) : IEventService
+public sealed class EventService(IEventRepository eventRepository) : IEventService
 {
     
-    private readonly EventRepository _eventRepository = eventRepository;
+    private readonly IEventRepository _eventRepository = eventRepository;
     
     public async Task<EventInfo> CreateEventAsync(CreateEvent request, CancellationToken cancellationToken = default)
     {

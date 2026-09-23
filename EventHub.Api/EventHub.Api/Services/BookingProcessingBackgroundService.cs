@@ -1,4 +1,5 @@
 using EventHub.Api.DataAccess;
+using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,15 +35,12 @@ public class BookingProcessingBackgroundService : BackgroundService
             try
             {
                 
-                List<Guid> pendingBookingIds;
+                IReadOnlyList<Guid> pendingBookingIds;
                 
-                using (var scope = _scopeFactory.CreateScope())
+               await using (var scope = _scopeFactory.CreateAsyncScope())
                 {
-                    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    pendingBookingIds = await context.Bookings
-                        .Where(b => b.Status == BookingStatus.Pending)
-                        .Select(b => b.Id)
-                        .ToListAsync(stoppingToken);
+                    var repo = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+                    pendingBookingIds = await repo.GetPendingIds(stoppingToken);
                 }
 
                 var tasks = pendingBookingIds.Select(id =>
@@ -77,17 +75,18 @@ public class BookingProcessingBackgroundService : BackgroundService
             await Task.Delay(ProcessingDelay, stoppingToken);
 
             using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var repoBooking = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+            var repoEvent = scope.ServiceProvider.GetRequiredService<IEventRepository>();
 
-            var booking = await context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+            var booking = await repoBooking.GetByIdAsync(bookingId, stoppingToken);
             if (booking == null || booking.Status != BookingStatus.Pending)
                 return;
 
-            var @event = await context.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+            var @event = await repoEvent.GetByIdAsync(booking.EventId, stoppingToken);
             if (@event == null)
             {
                 booking.Reject();
-                await context.SaveChangesAsync(stoppingToken);
+                await repoBooking.SaveChangesAsync(stoppingToken);
 
                 _logger.LogWarning(
                     "Booking {BookingId} rejected: event {EventId} not found",
@@ -97,7 +96,7 @@ public class BookingProcessingBackgroundService : BackgroundService
             }
 
             booking.Confirm();
-            await context.SaveChangesAsync(stoppingToken);
+            await repoBooking.SaveChangesAsync(stoppingToken);
 
             _logger.LogInformation(
                 "Booking {BookingId} for event {EventId} processed → {Status}",
@@ -111,18 +110,19 @@ public class BookingProcessingBackgroundService : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var repoBooking = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+                var repoEvent = scope.ServiceProvider.GetRequiredService<IEventRepository>();
 
-                var booking = await context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, stoppingToken);
+                var booking = await repoBooking.GetByIdAsync(bookingId, stoppingToken);
                 if (booking != null)
                 {
                     booking.Reject();
 
-                    var @event = await context.Events.FirstOrDefaultAsync(e => e.Id == booking.EventId, stoppingToken);
+                    var @event = await repoEvent.GetByIdAsync(booking.EventId, stoppingToken);
                     if (@event != null)
                         @event.ReleaseSeats();
 
-                    await context.SaveChangesAsync(stoppingToken);
+                    await repoEvent.SaveChangesAsync(stoppingToken);
                 }
 
                 _logger.LogError(ex,

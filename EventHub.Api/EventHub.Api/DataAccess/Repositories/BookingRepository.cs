@@ -18,4 +18,17 @@ public class BookingRepository(AppDbContext appDbContext) : IBookingRepository
     {
         return await _appDbContext.Bookings.FirstOrDefaultAsync(b => b.Id == id, ct);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetPendingIds(CancellationToken ct = default)
+    {
+        return await _appDbContext.Bookings
+            .Where(b => b.Status == BookingStatus.Pending)
+            .Select(b => b.Id)
+            .ToListAsync(ct);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken ct = default)
+    {
+        await _appDbContext.SaveChangesAsync(ct);
+    }
 }

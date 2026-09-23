@@ -65,4 +65,9 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
         await  _appDbContext.SaveChangesAsync(ct);
         return true;
     }
+
+    public async Task SaveChangesAsync(CancellationToken ct = default)
+    {
+        await _appDbContext.SaveChangesAsync(ct);
+    }
 }

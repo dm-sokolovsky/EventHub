@@ -21,4 +21,8 @@
         <Using Include="Xunit"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\EventHub.Api\EventHub.Api.csproj" />
+    </ItemGroup>
+
 </Project>

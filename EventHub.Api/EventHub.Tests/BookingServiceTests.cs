@@ -1,6 +1,8 @@
 using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Contracts;
 using EventHub.Api.DataAccess;
+using EventHub.Api.DataAccess.Repositories;
+using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,8 @@ public sealed class BookingServiceTests : IDisposable
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
+        services.AddScoped<IEventRepository, EventRepository>();
+        services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IBookingService, BookingService>();
 

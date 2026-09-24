@@ -1,38 +1,38 @@
 using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Contracts;
 using EventHub.Api.DataAccess;
+using EventHub.Api.DataAccess.Repositories;
+using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.Services;
 
-public sealed class BookingService : IBookingService
+public sealed class BookingService(
+    IBookingRepository bookingRepository,
+    IEventRepository eventRepository
+        ) : IBookingService
 {
 
     private static readonly SemaphoreSlim BookingLock = new(1, 1);
 
-    private readonly AppDbContext _context;
-
-    public BookingService(AppDbContext context)
-    {
-        _context = context;
-    }
+    private readonly IBookingRepository _bookingRepository = bookingRepository;
+    private readonly IEventRepository _eventRepository = eventRepository;
 
     public async Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
         await BookingLock.WaitAsync(cancellationToken);
         try
         {
-            var @event = await _context.Events.FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken)
+            var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken)
                          ?? throw new NotFoundException("Event not found");
 
             if (!@event.TryReserveSeats())
                 throw new NoAvailableSeatsException("No available seats for this event");
 
             var booking = Booking.CreatePending(eventId);
-            await _context.Bookings.AddAsync(booking, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-
+            await _bookingRepository.AddAsync(booking, cancellationToken);
+            
             return ToInfo(booking);
         }
         finally
@@ -43,7 +43,7 @@ public sealed class BookingService : IBookingService
 
     public async Task<BookingInfo> GetBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default)
     {
-        var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken)
+        var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken)
                       ?? throw new NotFoundException("Booking not found");
 
         return ToInfo(booking);

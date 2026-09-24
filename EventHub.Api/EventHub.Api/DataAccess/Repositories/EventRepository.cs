@@ -39,20 +39,6 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
         return (query, totalCount);
     }
 
-    public async Task<Event?> UpdateByIdAsync(Guid id, EventUpsert data, CancellationToken ct = default)
-    {
-        var eventToUpdate = await _appDbContext.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
-        
-        if (eventToUpdate is null)
-            return null;
-        
-        eventToUpdate.Update(data.Title, data.StartAt, data.EndAt, data.Description, data.TotalSeats);
-        
-        await _appDbContext.SaveChangesAsync(ct);
-        
-        return eventToUpdate;
-    }
-
     public async Task<bool> DeleteByIdAsync(Guid id, CancellationToken ct = default)
     {
         var eventToDelete = await _appDbContext.Events.FirstOrDefaultAsync(e => e.Id == id, ct);

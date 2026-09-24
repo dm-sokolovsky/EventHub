@@ -80,31 +80,6 @@ public class EventRepositoryTests : IAsyncLifetime
     }
     
     [Fact]
-    public async Task UpdateEvent_ChangesFieldInDatabase()
-    {
-        await ResetDatabaseAsync();
-
-        // Arrange
-        await using var context = CreateContext();
-        var now = DateTime.UtcNow.AddHours(1);
-        var eventData = Event.Create("Event", now, now.AddHours(2), 10, "тест");
-        await context.AddAsync(eventData);
-        await context.SaveChangesAsync();
-        
-
-        // Act
-        var repository = new EventRepository(CreateContext());
-        var eventToUpdate = new EventUpsert("Новое название", "Новое описание", now.AddDays(1), now.AddDays(2), 12);
-        await repository.UpdateByIdAsync(eventData.Id, eventToUpdate);
-
-        // Assert
-        await using var verifyContext = CreateContext();
-        var updated = await verifyContext.Events.FirstAsync(b => b.Id == eventData.Id);
-        Assert.Equal("Новое название", updated.Title);
-        Assert.Equal(12, updated.TotalSeats);
-    }
-    
-    [Fact]
     public async Task DeleteEvent_RemovesFromDatabase()
     {
         await ResetDatabaseAsync();

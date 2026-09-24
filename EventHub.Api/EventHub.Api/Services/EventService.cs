@@ -53,9 +53,13 @@ public sealed class EventService(IEventRepository eventRepository) : IEventServi
     
     public async Task<EventInfo> UpdateEventAsync(Guid id, EventUpsert request, CancellationToken cancellationToken = default)
     {
-        var @event = await _eventRepository.UpdateByIdAsync(id, request, cancellationToken)
+        var @event = await _eventRepository.GetByIdAsync(id, cancellationToken)
                      ?? throw new NotFoundException("Event not found");
 
+        @event.Update(request.Title, request.StartAt, request.EndAt, request.Description, request.TotalSeats);
+        
+        await _eventRepository.SaveChangesAsync(cancellationToken);
+        
         return ToInfo(@event);
     }
 

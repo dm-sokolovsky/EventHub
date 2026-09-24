@@ -93,11 +93,24 @@ public sealed class Event
     {
         ThrowIfNotValid(title, startAt, endAt, totalSeats);
 
+        if (totalSeats.HasValue)
+        {
+            var bookedSeats = TotalSeats - AvailableSeats;
+
+            if (totalSeats.Value < bookedSeats)
+                throw new ValidationException(new Dictionary<string, ICollection<string>>
+                {
+                    [nameof(TotalSeats)] = [$"TotalSeats cannot be less than already booked seats ({bookedSeats})"]
+                });
+
+            AvailableSeats = totalSeats.Value - bookedSeats;
+            TotalSeats = totalSeats.Value;
+        }
+
         Title = title!;
         StartAt = startAt!.Value;
         EndAt = endAt!.Value;
         Description = description;
-        TotalSeats = totalSeats!.Value;
     }
     
     public bool TryReserveSeats(int count = 1)

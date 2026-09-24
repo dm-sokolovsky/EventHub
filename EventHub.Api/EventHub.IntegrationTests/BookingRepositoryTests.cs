@@ -57,7 +57,7 @@ public class BookingRepositoryTests : IAsyncLifetime
     } 
     
     [Fact]
-    public async Task CreateBooking_ReturnsCurrentBooking()
+    public async Task CreateBooking_SaveBookingToDatabase()
     {
         await ResetDatabaseAsync();
         

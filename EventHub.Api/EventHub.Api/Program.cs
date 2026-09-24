@@ -8,7 +8,10 @@ using EventHub.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                       ?? throw new InvalidOperationException(
+                           "Не задана строка подключения ConnectionStrings:DefaultConnection "
+                           + "(appsettings.json или переменная окружения ConnectionStrings__DefaultConnection).");
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -49,6 +52,9 @@ app.UseSwaggerUI(c => c.SwaggerEndpoint("/openapi/v1.json", "Open Api V1"));
 
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
+
+// Корень редиректит на Swagger UI, чтобы http://localhost:8080 открывался сразу.
+app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
 app.MapEventEndpoints();
 app.MapBookingEndpoints();

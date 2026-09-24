@@ -88,14 +88,16 @@ public sealed class Event
         string? title,
         DateTime? startAt,
         DateTime? endAt,
-        string? description = null)
+        string? description = null,
+        int? totalSeats = null)
     {
-        ThrowIfNotValid(title, startAt, endAt, TotalSeats);
+        ThrowIfNotValid(title, startAt, endAt, totalSeats);
 
         Title = title!;
         StartAt = startAt!.Value;
         EndAt = endAt!.Value;
         Description = description;
+        TotalSeats = totalSeats!.Value;
     }
     
     public bool TryReserveSeats(int count = 1)

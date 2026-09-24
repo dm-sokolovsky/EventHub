@@ -46,7 +46,7 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
         if (eventToUpdate is null)
             return null;
         
-        eventToUpdate.Update(data.Title, data.StartAt, data.EndAt, data.Description);
+        eventToUpdate.Update(data.Title, data.StartAt, data.EndAt, data.Description, data.TotalSeats);
         
         await _appDbContext.SaveChangesAsync(ct);
         

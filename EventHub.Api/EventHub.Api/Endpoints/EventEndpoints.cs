@@ -8,11 +8,11 @@ internal static class EventEndpoints
 {
     internal static IEndpointRouteBuilder MapEventEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/events");
+        var group = app.MapGroup("/api/events");
 
         group.MapGet("/", async (
             IEventService eventService,
-            EventFilter eventFilter) =>
+            [AsParameters] EventFilter eventFilter) =>
         {
             var events = await eventService.GetAllEventsAsync(eventFilter);
             return Results.Ok(events);
@@ -34,7 +34,7 @@ internal static class EventEndpoints
         group.MapPost("/", async (CreateEvent request, IEventService eventService) =>
         {
             var createdEvent = await eventService.CreateEventAsync(request);
-            return Results.Created($"/events/{createdEvent.Id}", createdEvent);
+            return Results.Created($"/api/events/{createdEvent.Id}", createdEvent);
         })
         .WithName("CreateEvent")
         .Produces<EventInfo>(StatusCodes.Status201Created)

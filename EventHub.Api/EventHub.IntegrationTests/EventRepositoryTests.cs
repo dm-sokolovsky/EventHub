@@ -8,21 +8,14 @@ using Testcontainers.PostgreSql;
 
 namespace EventHub.IntegrationTests;
 
-public class EventRepositoryTests : IAsyncLifetime
+[Collection("RepositoryCollection")]
+public class EventRepositoryTests(PostgresFixture fixture) 
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .WithDatabase("eventhub_tests")
-        .Build();
     
-    public async Task InitializeAsync() => await _postgres.StartAsync();
-
-    public async Task DisposeAsync() => await _postgres.DisposeAsync();
-
     private AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString())
+            .UseNpgsql(fixture.Postgres.GetConnectionString())
             .Options;
 
         var context = new AppDbContext(options);

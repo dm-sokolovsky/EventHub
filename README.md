@@ -85,7 +85,9 @@ dotnet test EventHub.sln
 ```
 
 - `EventHub.Tests` — юнит-тесты сервисов и доменных моделей;
-- `EventHub.IntegrationTests` — тесты репозиториев (`EventRepositoryTests`, `BookingRepositoryTests`) на реальном PostgreSQL, который поднимается через [Testcontainers](https://dotnet.testcontainers.org/) (образ `postgres:16-alpine`). Нужен только запущенный Docker — отдельный `docker compose up` для них не требуется, контейнер создаётся и удаляется самими тестами.
+- `EventHub.IntegrationTests` — тесты репозиториев (`EventRepositoryTests`, `BookingRepositoryTests`) и миграций (`MigrationTests`) на реальном PostgreSQL, который поднимается через [Testcontainers](https://dotnet.testcontainers.org/) (образ `postgres:16-alpine`). Нужен только запущенный Docker — отдельный `docker compose up` для них не требуется, контейнеры создаются и удаляются самими тестами.
+
+`EventRepositoryTests` и `BookingRepositoryTests` делят один Postgres-контейнер через `PostgresFixture` (`ICollectionFixture`, коллекция `RepositoryCollection`) — схема строится через `EnsureCreated()`/`EnsureDeletedAsync()` из текущей модели, история миграций не проверяется; тесты внутри коллекции выполняются последовательно. `MigrationTests` — отдельный класс со своим изолированным контейнером (вне общей коллекции): гоняет `Database.MigrateAsync()` и проверяет через `GetAppliedMigrationsAsync()`, что `InitialCreate` реально применяется.
 
 Запуск по отдельности:
 
@@ -109,7 +111,7 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 | `StartAt`        | `DateTime` | обязательно              | Дата и время начала |
 | `EndAt`          | `DateTime` | обязательно, позже `StartAt` | Дата и время окончания |
 | `TotalSeats`     | `int`      | обязательно, `> 0`       | Общее количество мест |
-| `AvailableSeats` | `int`      | генерируется сервером    | Свободные места: при создании равно `TotalSeats`, уменьшается в `Event.TryReserveSeats()`, возвращается в `Event.ReleaseSeats()` |
+| `AvailableSeats` | `int`      | генерируется сервером    | Свободные места: при создании равно `TotalSeats`, уменьшается в `Event.TryReserveSeats()`, возвращается в `Event.ReleaseSeats()`, пересчитывается в `Event.Update()` при изменении `TotalSeats` |
 
 ### Валидация события
 
@@ -122,6 +124,8 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 - `TotalSeats` больше `0`.
 
 Нарушение бросает `Common/Exceptions/ValidationException` (собирает все ошибки по полям) → ответ `400 Bad Request`.
+
+При изменении `TotalSeats` через `Event.Update()` пересчитывается `AvailableSeats = TotalSeats - забронированные места` (забронированные = `TotalSeats - AvailableSeats` до обновления). Если новое `TotalSeats` меньше уже забронированных мест — `Event.Update()` бросает `ValidationException`, а не молча уводит `AvailableSeats` в отрицательные значения.
 
 ### Booking
 
@@ -166,7 +170,8 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 
 - `GET /api/events` принимает только фильтры `title`/`from`/`to`; параметры `page`/`pageSize` из query-строки **не читаются** — выдача всегда первая страница по 10 элементов (значения по умолчанию `EventService.GetAllEventsAsync`);
 - фильтр `to` сравнивается с `StartAt` события (`StartAt <= to`), а не с `EndAt`;
-- `DELETE /api/events/{id}` возвращает `204 No Content` и для несуществующего `id` — результат `DeleteEventAsync` не проверяется на уровне эндпоинта.
+- `DELETE /api/events/{id}` возвращает `204 No Content` и для несуществующего `id` — результат `DeleteEventAsync` не проверяется на уровне эндпоинта;
+- `400 Bad Request` от `ValidationException` реально приходит без `errors` по полям: `GlobalExceptionHandler` объявляет переменную под `ValidationProblemDetails`/`ProblemDetails` как `ProblemDetails` (`Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`), поэтому `WriteAsJsonAsync` сериализует по статическому типу и теряет словарь `errors` — в теле остаётся только `title`/`status`/`detail`.
 
 ### Примеры запросов
 

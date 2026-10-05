@@ -9,39 +9,39 @@ public sealed class Event
     /// <summary>
     /// Id события
     /// </summary>
-    internal Guid Id { get; private set; }
+    public Guid Id { get; private set; }
 
     /// <summary>
     /// Заголовок события 
     /// </summary>
-    internal string Title { get; private set; } = null!;
+    public string Title { get; private set; } = null!;
 
     /// <summary>
     /// Описание события 
     /// </summary>
-    internal string? Description { get; private set; }
+    public string? Description { get; private set; }
     
     /// <summary>
     /// Начало события
     /// </summary>
-    internal DateTime StartAt { get; private set; }
+    public DateTime StartAt { get; private set; }
     
     /// <summary>
     /// Окончание события 
     /// </summary>
-    internal DateTime EndAt { get; private set; }
+    public DateTime EndAt { get; private set; }
     
     /// <summary>
     /// Общее количество мест на событии
     /// </summary>
-    internal int TotalSeats { get; private set; }
+    public int TotalSeats { get; private set; }
     
     /// <summary>
     /// Текущее количество свободных мест; при сосоздании равно TotalSeats
     /// </summary>
-    internal int AvailableSeats { get; private set; }
+    public int AvailableSeats { get; private set; }
 
-    internal ICollection<Booking> Bookings { get; private set; } = [];
+    public ICollection<Booking> Bookings { get; private set; } = [];
     
     private Event() {}
     
@@ -71,7 +71,7 @@ public sealed class Event
         AvailableSeats = totalSeats;
     }
 
-    internal static Event Create(
+    public static Event Create(
         string? title,
         DateTime? startAt,
         DateTime? endAt,
@@ -84,13 +84,28 @@ public sealed class Event
         return new Event(Guid.NewGuid(), title!.Trim(), description, startAt!.Value, endAt!.Value, totalSeats!.Value);
     }
     
-    internal void Update(
+    public void Update(
         string? title,
         DateTime? startAt,
         DateTime? endAt,
-        string? description = null)
+        string? description = null,
+        int? totalSeats = null)
     {
-        ThrowIfNotValid(title, startAt, endAt, TotalSeats);
+        ThrowIfNotValid(title, startAt, endAt, totalSeats);
+
+        if (totalSeats.HasValue)
+        {
+            var bookedSeats = TotalSeats - AvailableSeats;
+
+            if (totalSeats.Value < bookedSeats)
+                throw new ValidationException(new Dictionary<string, ICollection<string>>
+                {
+                    [nameof(TotalSeats)] = [$"TotalSeats cannot be less than already booked seats ({bookedSeats})"]
+                });
+
+            AvailableSeats = totalSeats.Value - bookedSeats;
+            TotalSeats = totalSeats.Value;
+        }
 
         Title = title!;
         StartAt = startAt!.Value;
@@ -98,7 +113,7 @@ public sealed class Event
         Description = description;
     }
     
-    internal bool TryReserveSeats(int count = 1)
+    public bool TryReserveSeats(int count = 1)
     {
         if (AvailableSeats < count)
             return false;
@@ -107,7 +122,7 @@ public sealed class Event
         return true;
     }
 
-    internal void ReleaseSeats(int count = 1)
+    public void ReleaseSeats(int count = 1)
     {
         AvailableSeats = Math.Min(TotalSeats, AvailableSeats + count);
     }

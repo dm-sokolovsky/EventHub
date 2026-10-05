@@ -1,7 +1,48 @@
-﻿services:
+# EventHub: Postgres + API.
+# Запуск из корня решения (EventHub.Api/): docker compose up -d --build
+# Остановка: docker compose down   (с удалением данных: docker compose down -v)
+# API: http://localhost:8080/swagger  |  Postgres: localhost:5432
+# Данные сохраняются в именованном томе event_pgdata.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: event-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: event
+    ports:
+      - "5432:5432"
+    volumes:
+      - event_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d event"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   eventhub.api:
     image: eventhub.api
+    container_name: event-api
+    restart: unless-stopped
     build:
       context: .
       dockerfile: EventHub.Api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Kestrel слушает только HTTP внутри контейнера — HTTPS-порт не пробрасываем,
+      # поэтому UseHttpsRedirection в Program.cs остаётся неактивным.
+      ASPNETCORE_HTTP_PORTS: "8080"
+      # Имя ключа должно совпадать с GetConnectionString("DefaultConnection") в Program.cs.
+      # Host=postgres — имя сервиса в этой compose-сети, не localhost.
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=event;Username=postgres;Password=postgres"
+    ports:
+      - "8080:8080"
 
+volumes:
+  event_pgdata:

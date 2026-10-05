@@ -12,7 +12,9 @@ internal static class BookingEndpoints
 {
     internal static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/events/{id:guid}/book", async (
+        var group = app.MapGroup("/api");
+
+        group.MapPost("/events/{id:guid}/book", async (
                 Guid id,
                 IBookingService bookingService,
                 HttpContext httpContext,
@@ -20,7 +22,7 @@ internal static class BookingEndpoints
             {
                 var booking = await bookingService.CreateBookingAsync(id, cancellationToken);
 
-                var location = $"/bookings/{booking.Id}";
+                var location = $"/api/bookings/{booking.Id}";
                 httpContext.Response.Headers.Location = location;
 
                 return Results.Accepted(location, booking);
@@ -31,7 +33,7 @@ internal static class BookingEndpoints
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
-        app.MapGet("/bookings/{id:guid}", async (
+        group.MapGet("/bookings/{id:guid}", async (
                 Guid id,
                 IBookingService bookingService,
                 CancellationToken cancellationToken) =>

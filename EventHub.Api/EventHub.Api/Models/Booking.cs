@@ -10,29 +10,29 @@ public sealed class Booking
     /// <summary>
     /// Уникальный идентификатор брони
     /// </summary>
-    internal Guid Id { get; private set; }
+    public Guid Id { get; private set; }
     
     /// <summary>
     /// Идентификатор события, к которому относится бронь
     /// </summary>
-    internal Guid EventId { get; private set; }
+    public Guid EventId { get; private set; }
     
     /// <summary>
     /// Текущий статус брони
     /// </summary>
-    internal BookingStatus Status { get; private set; }
+    public BookingStatus Status { get; private set; }
     
     /// <summary>
     /// Дата и время создания брони
     /// </summary>
-    internal DateTime CreatedAt { get; private set; }
+    public DateTime CreatedAt { get; private set; }
     
     /// <summary>
     /// Дата и время обработки брони
     /// </summary>
-    internal DateTime? ProcessedAt { get;  private set; }
+    public DateTime? ProcessedAt { get;  private set; }
 
-    internal Event? Event { get; private set; }
+    public Event? Event { get; private set; }
 
     private Booking() {}
     
@@ -56,7 +56,7 @@ public sealed class Booking
         CreatedAt = createdAt;
     }
 
-    internal static Booking CreatePending(Guid eventId)
+    public static Booking CreatePending(Guid eventId)
     {
         if (eventId == Guid.Empty)
             throw new ValidationException(nameof(EventId), "EventId cannot be empty");
@@ -64,13 +64,13 @@ public sealed class Booking
         return new Booking(Guid.NewGuid(), eventId, BookingStatus.Pending, DateTime.UtcNow);
     }
 
-    internal void Confirm()
+    public void Confirm()
     {
         Status = BookingStatus.Confirmed;
         ProcessedAt = DateTime.UtcNow;
     }
 
-    internal void Reject()
+    public void Reject()
     {
         Status = BookingStatus.Rejected;
         ProcessedAt = DateTime.UtcNow;

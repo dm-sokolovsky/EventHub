@@ -1,5 +1,6 @@
 using System.Reflection;
 using EventHub.Api.Common;
+using EventHub.Api.Common.Middlewares;
 using EventHub.Api.DataAccess;
 using EventHub.Api.DataAccess.Repositories;
 using EventHub.Api.DataAccess.Repositories.Abstractions;

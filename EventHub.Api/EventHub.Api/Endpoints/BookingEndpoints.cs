@@ -1,6 +1,5 @@
 using System.Net;
 using EventHub.Api.Common;
-using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Contracts;
 using EventHub.Api.Models;
 using EventHub.Api.Services;

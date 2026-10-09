@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using EventHub.Api.Common.Exceptions;
-using ValidationException = EventHub.Api.Common.Exceptions.ValidationException;
+using ValidationException = EventHub.Domain.Exceptions.ValidationException;
 
 namespace EventHub.Api.Models;
 

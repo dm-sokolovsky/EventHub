@@ -1,5 +1,6 @@
 using EventHub.Api.Contracts;
 using EventHub.Api.Models;
+using EventHub.Domain.Exceptions;
 
 namespace EventHub.Api.Services;
 
@@ -13,7 +14,7 @@ public interface IBookingService
     /// </summary>
     /// <param name="eventId">Id события</param>
     /// <returns></returns>
-    /// <exception cref="EventHub.Api.Common.Exceptions.NotFoundException">Событие не найдено или было удалено</exception>
+    /// <exception cref="NotFoundException">Событие не найдено или было удалено</exception>
     Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default);
     
     /// <summary>

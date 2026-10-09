@@ -1,4 +1,3 @@
-using EventHub.Api.Common.Exceptions;
 using EventHub.Api.Contracts;
 using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Api.Models;

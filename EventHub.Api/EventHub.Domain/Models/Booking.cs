@@ -1,4 +1,4 @@
-using EventHub.Api.Common.Exceptions;
+using EventHub.Domain.Exceptions;
 
 namespace EventHub.Api.Models;
 

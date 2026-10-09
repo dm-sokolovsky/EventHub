@@ -2,7 +2,7 @@ using EventHub.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace EventHub.Api.DataAccess.Configurations;
+namespace EventHub.Infrastructure.Configurations;
 
 public class BookingConfiguration: IEntityTypeConfiguration<Booking>
 {

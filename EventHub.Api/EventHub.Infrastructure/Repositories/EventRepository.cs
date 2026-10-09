@@ -1,9 +1,9 @@
 using EventHab.Application.Contracts;
-using EventHub.Api.DataAccess.Repositories.Abstractions;
+using EventHab.Application.Repositories;
 using EventHub.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.DataAccess.Repositories;
+namespace EventHub.Infrastructure.Repositories;
 
 public class EventRepository(AppDbContext appDbContext) : IEventRepository
 {
@@ -20,7 +20,7 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
         return await _appDbContext.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
-    public async Task<(IReadOnlyList<Event>, int totalCount)> GetAllEventsAsync(EventFilter filter, int page, int pageSize, CancellationToken ct = default)
+    public async Task<(IReadOnlyList<Event>, int totalCount)> GetAllEventsAsync(EventFilter filter, int page = 1, int pageSize = 10, CancellationToken ct = default)
     {
         var query = _appDbContext.Events.AsQueryable();
         

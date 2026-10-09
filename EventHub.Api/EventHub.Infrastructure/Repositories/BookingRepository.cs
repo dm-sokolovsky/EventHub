@@ -1,8 +1,8 @@
-using EventHub.Api.DataAccess.Repositories.Abstractions;
+using EventHab.Application.Repositories;
 using EventHub.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.DataAccess.Repositories;
+namespace EventHub.Infrastructure.Repositories;
 
 public class BookingRepository(AppDbContext appDbContext) : IBookingRepository
 {

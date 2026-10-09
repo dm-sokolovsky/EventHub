@@ -1,10 +1,10 @@
 using EventHab.Application.Contracts;
+using EventHab.Application.Repositories;
+using EventHab.Application.Services;
 using EventHab.Application.Services.Abstractions;
-using EventHub.Api.DataAccess;
-using EventHub.Api.DataAccess.Repositories;
-using EventHub.Api.DataAccess.Repositories.Abstractions;
-using EventHub.Api.Services;
 using EventHub.Domain.Exceptions;
+using EventHub.Infrastructure;
+using EventHub.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,7 +1,7 @@
 using EventHub.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.DataAccess;
+namespace EventHub.Infrastructure;
 
 public sealed class AppDbContext : DbContext
 {

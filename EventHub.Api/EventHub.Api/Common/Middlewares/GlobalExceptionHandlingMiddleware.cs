@@ -1,10 +1,8 @@
-using System.Net;
-using EventHub.Api.Common.Exceptions;
-using EventHub.Api.Models;
+using EventHub.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EventHub.Api.Common;
+namespace EventHub.Api.Common.Middlewares;
 
 internal sealed class GlobalExceptionHandler : IExceptionHandler
 {

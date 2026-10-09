@@ -1,8 +1,7 @@
 using System.Net;
+using EventHab.Application.Contracts;
+using EventHab.Application.Services.Abstractions;
 using EventHub.Api.Common;
-using EventHub.Api.Common.Exceptions;
-using EventHub.Api.Contracts;
-using EventHub.Api.Models;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 

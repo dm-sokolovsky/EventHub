@@ -1,5 +1,5 @@
-using EventHub.Api.Models;
-using ValidationException = EventHub.Api.Common.Exceptions.ValidationException;
+using EventHub.Domain.Models;
+using ValidationException = EventHub.Domain.Exceptions.ValidationException;
 
 namespace EventHub.Tests;
 

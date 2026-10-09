@@ -1,7 +1,5 @@
-using EventHub.Api.DataAccess;
-using EventHub.Api.DataAccess.Repositories.Abstractions;
-using EventHub.Api.Models;
-using Microsoft.EntityFrameworkCore;
+using EventHab.Application.Repositories;
+using EventHub.Domain.Models;
 
 namespace EventHub.Api.Services;
 

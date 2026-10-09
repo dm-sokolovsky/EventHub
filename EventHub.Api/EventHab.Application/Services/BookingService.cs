@@ -1,13 +1,10 @@
 using EventHab.Application.Contracts;
+using EventHab.Application.Repositories;
 using EventHab.Application.Services.Abstractions;
-using EventHub.Api.DataAccess;
-using EventHub.Api.DataAccess.Repositories;
-using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Models;
-using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.Services;
+namespace EventHab.Application.Services;
 
 public sealed class BookingService(
     IBookingRepository bookingRepository,

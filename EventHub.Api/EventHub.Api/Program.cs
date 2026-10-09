@@ -1,4 +1,5 @@
 using System.Reflection;
+using EventHab.Application.Services.Abstractions;
 using EventHub.Api.Common;
 using EventHub.Api.Common.Middlewares;
 using EventHub.Api.DataAccess;

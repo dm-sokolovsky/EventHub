@@ -1,6 +1,6 @@
-using EventHub.Api.Models;
+using EventHub.Domain.Models;
 
-namespace EventHub.Api.DataAccess.Repositories.Abstractions;
+namespace EventHab.Application.Repositories;
 
 public interface IBookingRepository
 {

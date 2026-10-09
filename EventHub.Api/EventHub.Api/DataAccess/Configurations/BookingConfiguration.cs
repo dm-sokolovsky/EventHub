@@ -1,4 +1,4 @@
-using EventHub.Api.Models;
+using EventHub.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

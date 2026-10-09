@@ -1,6 +1,6 @@
-using EventHub.Api.Models;
+using EventHub.Domain.Models;
 
-namespace EventHub.Api.Contracts;
+namespace EventHab.Application.Contracts;
 
 /// <summary>
 /// DTO для отображения брони 

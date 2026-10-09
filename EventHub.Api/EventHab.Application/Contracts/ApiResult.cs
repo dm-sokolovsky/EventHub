@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace EventHub.Api.Models;
+namespace EventHab.Application.Contracts;
 
 /// <summary>
 /// Класс с возвращаемыми данными

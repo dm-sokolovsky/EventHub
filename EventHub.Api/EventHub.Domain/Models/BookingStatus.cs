@@ -1,4 +1,4 @@
-namespace EventHub.Api.Models;
+namespace EventHub.Domain.Models;
 
 /// <summary>
 /// Статусная модель бронирования

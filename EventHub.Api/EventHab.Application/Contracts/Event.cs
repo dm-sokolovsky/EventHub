@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace EventHub.Api.Contracts;
+namespace EventHab.Application.Contracts;
 
 /// <summary>
 /// DTO для отображения события

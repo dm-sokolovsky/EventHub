@@ -1,7 +1,6 @@
-using System.ComponentModel.DataAnnotations;
 using ValidationException = EventHub.Domain.Exceptions.ValidationException;
 
-namespace EventHub.Api.Models;
+namespace EventHub.Domain.Models;
 
 public sealed class Event
 {

@@ -1,6 +1,6 @@
-using EventHub.Api.Contracts;
+using EventHab.Application.Contracts;
 using EventHub.Api.DataAccess.Repositories.Abstractions;
-using EventHub.Api.Models;
+using EventHub.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventHub.Api.DataAccess.Repositories;
@@ -20,7 +20,7 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
         return await _appDbContext.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
-    public async Task<(IQueryable<Event>, int totalCount)> GetAllEventsAsync(EventFilter filter, CancellationToken ct = default)
+    public async Task<(IReadOnlyList<Event>, int totalCount)> GetAllEventsAsync(EventFilter filter, int page, int pageSize, CancellationToken ct = default)
     {
         var query = _appDbContext.Events.AsQueryable();
         
@@ -34,8 +34,12 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
             query = query.Where(e => e.Title.ToLower().Contains(filter.Title.ToLower()));
         
         var  totalCount = await query.CountAsync(ct);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
         
-        return (query, totalCount);
+        return (items, totalCount);
     }
 
     public async Task<bool> DeleteByIdAsync(Guid id, CancellationToken ct = default)

@@ -1,13 +1,10 @@
 using EventHab.Application.Contracts;
+using EventHab.Application.Repositories;
 using EventHab.Application.Services.Abstractions;
-using EventHub.Api.DataAccess;
-using EventHub.Api.DataAccess.Repositories;
-using EventHub.Api.DataAccess.Repositories.Abstractions;
 using EventHub.Domain.Exceptions;
 using EventHub.Domain.Models;
-using Microsoft.EntityFrameworkCore;
 
-namespace EventHub.Api.Services;
+namespace EventHab.Application.Services;
 
 public sealed class EventService(IEventRepository eventRepository) : IEventService
 {
@@ -36,12 +33,7 @@ public sealed class EventService(IEventRepository eventRepository) : IEventServi
         int pageSize = 10, 
         CancellationToken cancellationToken = default)
     {
-        var (query, totalCount) = await _eventRepository.GetAllEventsAsync(eventFilter, cancellationToken);
-
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
+        var (items, totalCount) = await _eventRepository.GetAllEventsAsync(eventFilter, page, pageSize, cancellationToken);
 
         return new PaginatedResult<EventInfo>
         {

@@ -1,6 +1,6 @@
 using EventHub.Domain.Exceptions;
 
-namespace EventHub.Api.Models;
+namespace EventHub.Domain.Models;
 
 /// <summary>
 /// Бронирование 

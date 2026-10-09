@@ -1,4 +1,4 @@
-namespace EventHub.Api.Contracts;
+namespace EventHab.Application.Contracts;
 
 /// <summary>
 /// DTO для вывода результатов пагинации событий

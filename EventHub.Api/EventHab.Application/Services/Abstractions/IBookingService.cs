@@ -1,8 +1,7 @@
-using EventHub.Api.Contracts;
-using EventHub.Api.Models;
+using EventHab.Application.Contracts;
 using EventHub.Domain.Exceptions;
 
-namespace EventHub.Api.Services;
+namespace EventHab.Application.Services.Abstractions;
 
 /// <summary>
 /// Интерфейс сервиса бронирования 

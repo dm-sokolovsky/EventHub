@@ -1,4 +1,5 @@
-using EventHub.Api.Contracts;
+using EventHab.Application.Contracts;
+using EventHab.Application.Services.Abstractions;
 using EventHub.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 

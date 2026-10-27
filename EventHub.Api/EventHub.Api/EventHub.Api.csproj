@@ -36,4 +36,9 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\EventHab.Application\EventHab.Application.csproj" />
+      <ProjectReference Include="..\EventHub.Infrastructure\EventHub.Infrastructure.csproj" />
+    </ItemGroup>
+
 </Project>

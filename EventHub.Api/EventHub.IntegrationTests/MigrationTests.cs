@@ -1,4 +1,4 @@
-using EventHub.Api.DataAccess;
+using EventHub.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 

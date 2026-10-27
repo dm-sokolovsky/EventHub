@@ -1,10 +1,12 @@
 using System.Reflection;
-using EventHub.Api.Common;
-using EventHub.Api.DataAccess;
-using EventHub.Api.DataAccess.Repositories;
-using EventHub.Api.DataAccess.Repositories.Abstractions;
+using EventHab.Application.Repositories;
+using EventHab.Application.Services;
+using EventHab.Application.Services.Abstractions;
+using EventHub.Api.Common.Middlewares;
 using EventHub.Api.Endpoints;
 using EventHub.Api.Services;
+using EventHub.Infrastructure;
+using EventHub.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

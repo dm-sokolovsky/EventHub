@@ -4,13 +4,36 @@ REST API для управления событиями (events) и бронир
 
 ## Стек
 
-- ASP.NET Core 10, minimal API (`Endpoints/EventEndpoints.cs`, `Endpoints/BookingEndpoints.cs`) — контроллеров в проекте нет
-- PostgreSQL + EF Core 10 (`Npgsql.EntityFrameworkCore.PostgreSQL`), доступ к данным через репозитории (`DataAccess/Repositories`)
-- Миграции EF Core, применяются автоматически при старте (`db.Database.Migrate()` в `Program.cs`)
+- ASP.NET Core 10, minimal API (`EventHub.Api/Endpoints/EventEndpoints.cs`, `BookingEndpoints.cs`) — контроллеров в проекте нет
+- Слоистая архитектура из четырёх проектов: `Domain` ← `Application` ← `Infrastructure` ← `Api` (см. [Архитектура](#архитектура))
+- PostgreSQL + EF Core 10 (`Npgsql.EntityFrameworkCore.PostgreSQL`), доступ к данным через репозитории (`EventHub.Infrastructure/Repositories`)
+- Миграции EF Core лежат в `EventHub.Infrastructure/Migrations`, применяются автоматически при старте (`db.Database.Migrate()` в `Program.cs`)
 - `BackgroundService` — асинхронная обработка бронирований
-- Ошибки — через `IExceptionHandler` (`Common/GlobalExceptionHandler`) в формате RFC 9457 `ProblemDetails`
+- Ошибки — доменные исключения (`EventHub.Domain/Exceptions`) превращаются в `ProblemDetails` (RFC 9457) через `IExceptionHandler` в `EventHub.Api` (`Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`)
 - Swagger UI (Swashbuckle) поверх встроенной OpenAPI-спеки `Microsoft.AspNetCore.OpenApi`
 - Docker Compose: Postgres + API одной командой
+
+## Архитектура
+
+Решение разбито на четыре проекта, зависимости направлены внутрь:
+
+```
+EventHub.Api ──► EventHub.Infrastructure ──► EventHab.Application ──► EventHub.Domain
+     └──────────────────────────────────────────►┘
+```
+
+| Проект | Что внутри | Зависит от |
+|--------|------------|------------|
+| `EventHub.Domain` | Модели `Event`, `Booking`, `BookingStatus` с инвариантами; доменные исключения `NotFoundException`, `ValidationException`, `NoAvailableSeatsException` | — (чистый, без пакетов) |
+| `EventHab.Application` | Сервисы `EventService`, `BookingService` и их интерфейсы; интерфейсы репозиториев `IEventRepository`, `IBookingRepository`; DTO (`Contracts`) | `Domain` |
+| `EventHub.Infrastructure` | `AppDbContext`, конфигурации сущностей, миграции, реализации репозиториев (EF Core + Npgsql) | `Application`, `Domain` |
+| `EventHub.Api` | Composition root (`Program.cs`), minimal API эндпоинты, `GlobalExceptionHandler`, `BookingProcessingBackgroundService` | `Application`, `Infrastructure` |
+
+Ключевые решения:
+
+- **Интерфейс репозитория объявлен в `Application`, реализация — в `Infrastructure`.** Сервисы не знают про EF Core: `Application` не ссылается на пакет `Microsoft.EntityFrameworkCore`, поэтому репозиторий возвращает уже материализованный `IReadOnlyList<Event>`, а `Skip`/`Take`/`ToListAsync` выполняются внутри `EventRepository`.
+- **Доменные исключения не знают про HTTP.** В `Domain` нет `ProblemDetails` и статус-кодов; соответствие «исключение → HTTP-статус» живёт только в `EventHub.Api/Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`.
+- **Связывание через DI — только в `Program.cs`** (`AddScoped<IEventRepository, EventRepository>()` и т.д.).
 
 ## Быстрый старт через Docker
 
@@ -59,7 +82,7 @@ dotnet run --project EventHub.Api
 
 ## База данных и миграции
 
-Схема описана через `IEntityTypeConfiguration` (`DataAccess/Configurations`), имена таблиц и колонок — snake_case с префиксом `cd_`:
+Схема описана через `IEntityTypeConfiguration` (`EventHub.Infrastructure/Configurations`), имена таблиц и колонок — snake_case с префиксом `cd_`:
 
 | Сущность | Таблица | Колонки |
 |----------|---------|---------|
@@ -68,11 +91,11 @@ dotnet run --project EventHub.Api
 
 `Id` обеих сущностей генерируется в домене (`Guid.NewGuid()`), а не базой (`ValueGeneratedNever`). `BookingStatus` хранится строкой (`HasConversion<string>`).
 
-Миграции применяются автоматически на старте приложения. Добавить новую:
+Миграции применяются автоматически на старте приложения. `AppDbContext` и миграции живут в `EventHub.Infrastructure`, а точкой запуска (со строкой подключения) служит `EventHub.Api`, поэтому нужны оба флага. Добавить новую:
 
 ```bash
 cd EventHub.Api
-dotnet ef migrations add <Name> --project EventHub.Api
+dotnet ef migrations add <Name> --project EventHub.Infrastructure --startup-project EventHub.Api
 ```
 
 ## Тесты
@@ -123,7 +146,7 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 - `EndAt` позже `StartAt`;
 - `TotalSeats` больше `0`.
 
-Нарушение бросает `Common/Exceptions/ValidationException` (собирает все ошибки по полям) → ответ `400 Bad Request`.
+Нарушение бросает `EventHub.Domain.Exceptions.ValidationException` (собирает все ошибки по полям) → ответ `400 Bad Request`.
 
 При изменении `TotalSeats` через `Event.Update()` пересчитывается `AvailableSeats = TotalSeats - забронированные места` (забронированные = `TotalSeats - AvailableSeats` до обновления). Если новое `TotalSeats` меньше уже забронированных мест — `Event.Update()` бросает `ValidationException`, а не молча уводит `AvailableSeats` в отрицательные значения.
 
@@ -171,7 +194,7 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 - `GET /api/events` принимает только фильтры `title`/`from`/`to`; параметры `page`/`pageSize` из query-строки **не читаются** — выдача всегда первая страница по 10 элементов (значения по умолчанию `EventService.GetAllEventsAsync`);
 - фильтр `to` сравнивается с `StartAt` события (`StartAt <= to`), а не с `EndAt`;
 - `DELETE /api/events/{id}` возвращает `204 No Content` и для несуществующего `id` — результат `DeleteEventAsync` не проверяется на уровне эндпоинта;
-- `400 Bad Request` от `ValidationException` реально приходит без `errors` по полям: `GlobalExceptionHandler` объявляет переменную под `ValidationProblemDetails`/`ProblemDetails` как `ProblemDetails` (`Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`), поэтому `WriteAsJsonAsync` сериализует по статическому типу и теряет словарь `errors` — в теле остаётся только `title`/`status`/`detail`.
+- `400 Bad Request` от `ValidationException` реально приходит без `errors` по полям: `GlobalExceptionHandler` объявляет переменную под `ValidationProblemDetails`/`ProblemDetails` как `ProblemDetails` (`EventHub.Api/Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`), поэтому `WriteAsJsonAsync` сериализует по статическому типу и теряет словарь `errors` — в теле остаётся только `title`/`status`/`detail`.
 
 ### Примеры запросов
 
@@ -275,7 +298,7 @@ GET /api/bookings/b1f2c3d4-0000-0000-0000-000000000000
 
 ## Фоновая обработка бронирований
 
-`BookingProcessingBackgroundService` (`Services/BookingProcessingBackgroundService.cs`) регистрируется через `AddHostedService` и работает всё время жизни приложения:
+`BookingProcessingBackgroundService` (`EventHub.Api/Services/BookingProcessingBackgroundService.cs`) регистрируется через `AddHostedService` и работает всё время жизни приложения:
 
 1. каждые 5 секунд (`PollingInterval`) в отдельном DI-scope запрашивает у `IBookingRepository.GetPendingIds()` идентификаторы броней в статусе `Pending`;
 2. обрабатывает их **параллельно** через `Task.WhenAll`, по задаче `ProcessBookingAsync` на бронь.
@@ -294,7 +317,7 @@ GET /api/bookings/b1f2c3d4-0000-0000-0000-000000000000
 
 Успешные ответы — это DTO напрямую (`EventInfo`, `BookingInfo`, `PaginatedResult<EventInfo>`), без общего конверта.
 
-Ошибки обрабатываются централизованно в `Common/GlobalExceptionHandler` (реализует `IExceptionHandler`, подключён через `AddExceptionHandler` + `UseExceptionHandler`) и возвращаются в формате `ProblemDetails`:
+Ошибки обрабатываются централизованно в `GlobalExceptionHandler` (`EventHub.Api/Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`, реализует `IExceptionHandler`, подключён через `AddExceptionHandler` + `UseExceptionHandler`) и возвращаются в формате `ProblemDetails`. Сами исключения объявлены в `EventHub.Domain/Exceptions` и ничего не знают о HTTP — статус-код подбирается только в обработчике:
 
 ```json
 {
@@ -311,39 +334,42 @@ GET /api/bookings/b1f2c3d4-0000-0000-0000-000000000000
 | `NoAvailableSeatsException` | `409`       | Нет свободных мест при создании брони |
 | любое другое                | `500`       | Непредвиденная ошибка; текст исключения уходит только в лог |
 
-Файлы конверта `Contracts/ApiResult.cs`, `Common/ApiResultActionResult.cs`, `Common/ApiResultWithLocationResult.cs` и `Common/ApiBaseResultExtensions.cs` остались от прежней версии на контроллерах и сейчас нигде не используются — minimal API-эндпоинты их не вызывают.
+Файлы конверта `EventHab.Application/Contracts/ApiResult.cs`, `EventHub.Api/Common/ApiResultActionResult.cs`, `ApiResultWithLocationResult.cs` и `ApiBaseResultExtensions.cs` остались от прежней версии на контроллерах и сейчас нигде не используются — minimal API-эндпоинты их не вызывают.
 
-`Common/Exceptions/ValidationException` — собственный тип, затеняющий `System.ComponentModel.DataAnnotations.ValidationException`; когда оба в области видимости, нужен явный `using`-алиас (пример — `Models/Event.cs`).
+`EventHub.Domain.Exceptions.ValidationException` — собственный тип, затеняющий `System.ComponentModel.DataAnnotations.ValidationException`; когда оба в области видимости, нужен явный `using`-алиас (пример — `EventHub.Domain/Models/Event.cs`).
 
 ## Структура проекта
 
 ```
 EventHub.Api/                       # каталог решения (EventHub.sln, compose.yaml)
 ├── compose.yaml                    # Postgres + API
-├── EventHub.Api/                   # проект API
+├── EventHub.Domain/                # домен, без зависимостей
+│   ├── Models/                     # Event, Booking, BookingStatus
+│   └── Exceptions/                 # NotFoundException, ValidationException,
+│                                   # NoAvailableSeatsException
+├── EventHab.Application/           # сценарии использования
+│   ├── Contracts/                  # EventInfo, CreateEvent, EventUpsert, EventFilter,
+│   │                               # BookingInfo, PaginatedResult<T>, ApiResult (не используется)
+│   ├── Repositories/               # IEventRepository, IBookingRepository
+│   └── Services/
+│       ├── Abstractions/           # IEventService, IBookingService
+│       ├── EventService.cs
+│       └── BookingService.cs
+├── EventHub.Infrastructure/        # EF Core + PostgreSQL
+│   ├── AppDbContext.cs
+│   ├── Configurations/             # EventConfiguration, BookingConfiguration
+│   ├── Migrations/
+│   └── Repositories/               # EventRepository, BookingRepository
+├── EventHub.Api/                   # composition root и HTTP-слой
 │   ├── Dockerfile
 │   ├── Endpoints/
 │   │   ├── EventEndpoints.cs       # группа /api/events
 │   │   └── BookingEndpoints.cs     # группа /api: /events/{id}/book, /bookings/{id}
-│   ├── DataAccess/
-│   │   ├── AppDbContext.cs
-│   │   ├── Configurations/         # EventConfiguration, BookingConfiguration
-│   │   └── Repositories/
-│   │       ├── Abstractions/       # IEventRepository, IBookingRepository
-│   │       ├── EventRepository.cs
-│   │       └── BookingRepository.cs
-│   ├── Migrations/
-│   ├── Models/                     # Event, Booking, BookingStatus (доменные модели)
-│   ├── Contracts/                  # EventInfo, CreateEvent, EventUpsert, EventFilter,
-│   │                               # BookingInfo, PaginatedResult<T>
 │   ├── Services/
-│   │   ├── IEventService.cs / EventService.cs
-│   │   ├── IBookingService.cs / BookingService.cs
 │   │   └── BookingProcessingBackgroundService.cs
 │   ├── Common/
 │   │   ├── Middlewares/GlobalExceptionHandlingMiddleware.cs  # класс GlobalExceptionHandler
-│   │   └── Exceptions/             # NotFoundException, ValidationException,
-│   │                               # NoAvailableSeatsException
+│   │   └── ApiResult*.cs, ApiBaseResultExtensions.cs         # не используются
 │   └── Program.cs
 ├── EventHub.Tests/                 # юнит-тесты
 └── EventHub.IntegrationTests/      # тесты репозиториев на Testcontainers

@@ -1,4 +1,4 @@
-using EventHub.Api.Models;
+using EventHab.Application.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 

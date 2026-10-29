@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EventHub.Infrastructure.Configurations;
 
-public class BookingConfiguration: IEntityTypeConfiguration<Booking>
+public sealed class BookingConfiguration: IEntityTypeConfiguration<Booking>
 {
     public void Configure(EntityTypeBuilder<Booking> builder)
     {
@@ -36,6 +36,13 @@ public class BookingConfiguration: IEntityTypeConfiguration<Booking>
             .WithMany(b => b.Bookings)
             .HasForeignKey(b => b.EventId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(b => b.User)
+            .WithMany(b => b.Bookings)
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+        
+        builder.HasIndex(b => b.UserId);
 
     }
 }

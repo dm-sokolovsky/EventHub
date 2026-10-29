@@ -36,9 +36,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddHostedService<BookingProcessingBackgroundService>();
 
@@ -75,6 +77,7 @@ app.UseExceptionHandler();
 // Корень редиректит на Swagger UI, чтобы http://localhost:8080 открывался сразу.
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
+app.MapUserEndpoints();
 app.MapEventEndpoints();
 app.MapBookingEndpoints();
 

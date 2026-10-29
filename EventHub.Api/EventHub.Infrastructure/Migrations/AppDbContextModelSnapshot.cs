@@ -22,7 +22,7 @@ namespace EventHub.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("EventHub.Api.Models.Booking", b =>
+            modelBuilder.Entity("EventHub.Domain.Models.Booking", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -46,14 +46,19 @@ namespace EventHub.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("EventId");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("cd_bookings", (string)null);
                 });
 
-            modelBuilder.Entity("EventHub.Api.Models.Event", b =>
+            modelBuilder.Entity("EventHub.Domain.Models.Event", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -91,18 +96,62 @@ namespace EventHub.Infrastructure.Migrations
                     b.ToTable("cd_events", (string)null);
                 });
 
-            modelBuilder.Entity("EventHub.Api.Models.Booking", b =>
+            modelBuilder.Entity("EventHub.Domain.Models.User", b =>
                 {
-                    b.HasOne("EventHub.Api.Models.Event", "Event")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Login")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("login");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Login")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("EventHub.Domain.Models.Booking", b =>
+                {
+                    b.HasOne("EventHub.Domain.Models.Event", "Event")
                         .WithMany("Bookings")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EventHub.Domain.Models.User", "User")
+                        .WithMany("Bookings")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Event");
+
+                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("EventHub.Api.Models.Event", b =>
+            modelBuilder.Entity("EventHub.Domain.Models.Event", b =>
+                {
+                    b.Navigation("Bookings");
+                });
+
+            modelBuilder.Entity("EventHub.Domain.Models.User", b =>
                 {
                     b.Navigation("Bookings");
                 });

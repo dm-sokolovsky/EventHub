@@ -27,6 +27,10 @@ public sealed class User
     /// </summary>
     public Role Role { get; private set; }
 
+    private readonly List<Booking> _bookings = [];
+    
+    public IReadOnlyCollection<Booking> Bookings => _bookings;
+
     private User() {}
 
     /// <summary>

@@ -39,6 +39,8 @@ public sealed class Booking
 
     public Event? Event { get; private set; }
 
+    public User User { get; private set; } = null!;
+
     private Booking() {}
     
     /// <summary>

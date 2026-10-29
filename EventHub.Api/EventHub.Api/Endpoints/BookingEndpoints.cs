@@ -13,13 +13,14 @@ internal static class BookingEndpoints
     {
         var group = app.MapGroup("/api");
 
-        group.MapPost("/events/{id:guid}/book", async (
-                Guid id,
+        group.MapPost("/events/{eventId:guid}{userId:guid}/book", async (
+                Guid eventId,
+                Guid userId,
                 IBookingService bookingService,
                 HttpContext httpContext,
                 CancellationToken cancellationToken) =>
             {
-                var booking = await bookingService.CreateBookingAsync(id, cancellationToken);
+                var booking = await bookingService.CreateBookingAsync(eventId, userId, cancellationToken);
 
                 var location = $"/api/bookings/{booking.Id}";
                 httpContext.Response.Headers.Location = location;
@@ -44,6 +45,20 @@ internal static class BookingEndpoints
             .Produces<BookingInfo>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/bookings/{id:guid}/cancel", async (
+                Guid id,
+                IBookingService bookingService,
+                CancellationToken cancellationToken
+        ) =>
+        {
+            var booking = await bookingService.CancelledBookingByIdAsync(id, cancellationToken);
+            return Results.Ok(booking);
+        })
+        .WithName("RejectBooking")
+        .Produces<BookingInfo>(StatusCodes.Status200OK)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
 
         return app;
     }

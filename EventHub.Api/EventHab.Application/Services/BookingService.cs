@@ -17,7 +17,7 @@ public sealed class BookingService(
     private readonly IBookingRepository _bookingRepository = bookingRepository;
     private readonly IEventRepository _eventRepository = eventRepository;
 
-    public async Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public async Task<BookingInfo> CreateBookingAsync(Guid eventId, Guid userId, CancellationToken cancellationToken = default)
     {
         await BookingLock.WaitAsync(cancellationToken);
         try
@@ -28,7 +28,7 @@ public sealed class BookingService(
             if (!@event.TryReserveSeats())
                 throw new NoAvailableSeatsException("No available seats for this event");
 
-            var booking = Booking.CreatePending(eventId);
+            var booking = Booking.CreatePending(eventId, userId);
             await _bookingRepository.AddAsync(booking, cancellationToken);
             
             return ToInfo(booking);
@@ -46,7 +46,20 @@ public sealed class BookingService(
 
         return ToInfo(booking);
     }
-    
+
+    public async Task<BookingInfo> CancelledBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken)
+                      ?? throw new NotFoundException("Booking not found");
+        
+        booking.Cancel();
+        
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
+        
+        return ToInfo(booking);
+    }
+
+
     private static BookingInfo ToInfo(Booking booking) => new()
     {
         Id = booking.Id,

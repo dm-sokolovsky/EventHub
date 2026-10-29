@@ -39,7 +39,7 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         // Arrange
         await using var context = CreateContext();
         var repo = new BookingRepository(context);
-        var booking = Booking.CreatePending(Guid.NewGuid(),  Guid.NewGuid());
+        var booking = Booking.CreatePending(Guid.NewGuid(),  Guid.NewGuid(), 1);
 
         // Act
 
@@ -61,7 +61,7 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         var now = DateTime.UtcNow.AddHours(1);
         var userId =  Guid.NewGuid();
         var eventData = Event.Create("Event1", now, now.AddHours(2), 10);
-        var booking = Booking.CreatePending(eventData.Id, userId);
+        var booking = Booking.CreatePending(eventData.Id, userId, 1);
 
         // Act
         await repoEvent.AddAsync(eventData);
@@ -92,7 +92,7 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         var now = DateTime.UtcNow.AddHours(1);
         var userId =  Guid.NewGuid();
         var eventData = Event.Create("Event1", now, now.AddHours(2), 10);
-        var booking = Booking.CreatePending(eventData.Id, userId);
+        var booking = Booking.CreatePending(eventData.Id, userId, 1);
 
         // Act
         await repoEvent.AddAsync(eventData);
@@ -121,8 +121,8 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         var now = DateTime.UtcNow.AddHours(1);
         var userId =  Guid.NewGuid();
         var eventData = Event.Create("Event1", now, now.AddHours(2), 10);
-        var booking1 = Booking.CreatePending(eventData.Id, userId);
-        var booking2 = Booking.CreatePending(eventData.Id, userId);
+        var booking1 = Booking.CreatePending(eventData.Id, userId, 1);
+        var booking2 = Booking.CreatePending(eventData.Id, userId, 1);
 
         // Act
         await repoEvent.AddAsync(eventData);

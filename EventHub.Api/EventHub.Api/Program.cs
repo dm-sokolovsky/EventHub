@@ -3,6 +3,7 @@ using System.Text;
 using EventHab.Application.Repositories;
 using EventHab.Application.Services;
 using EventHab.Application.Services.Abstractions;
+using EventHub.Api.Common;
 using EventHub.Api.Common.Middlewares;
 using EventHub.Api.Endpoints;
 using EventHub.Api.Extensions;
@@ -53,6 +54,9 @@ builder.Services.AddSingleton<IPasswordHasher, Sha256PasswordHasher>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 var app = builder.Build();
 

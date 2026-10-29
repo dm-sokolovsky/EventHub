@@ -8,7 +8,8 @@ namespace EventHab.Application.Services;
 
 public sealed class BookingService(
     IBookingRepository bookingRepository,
-    IEventRepository eventRepository
+    IEventRepository eventRepository,
+    ICurrentUser currentUser
         ) : IBookingService
 {
 
@@ -16,19 +17,25 @@ public sealed class BookingService(
 
     private readonly IBookingRepository _bookingRepository = bookingRepository;
     private readonly IEventRepository _eventRepository = eventRepository;
+    private readonly ICurrentUser _currentUser = currentUser;
 
     public async Task<BookingInfo> CreateBookingAsync(Guid eventId, Guid userId, CancellationToken cancellationToken = default)
     {
         await BookingLock.WaitAsync(cancellationToken);
         try
         {
+            var now = DateTime.Now;
+            var activeCount = 1;
             var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken)
                          ?? throw new NotFoundException("Event not found");
 
             if (!@event.TryReserveSeats())
                 throw new NoAvailableSeatsException("No available seats for this event");
+            
+            if (@event.IsActive(now))
+                throw new EventAlreadyStartedException(eventId, now);
 
-            var booking = Booking.CreatePending(eventId, userId);
+            var booking = Booking.CreatePending(eventId, userId, activeCount);
             await _bookingRepository.AddAsync(booking, cancellationToken);
             
             return ToInfo(booking);
@@ -51,6 +58,9 @@ public sealed class BookingService(
     {
         var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken)
                       ?? throw new NotFoundException("Booking not found");
+        
+        if (booking.UserId != _currentUser.Id && !_currentUser.IsAdmin)
+            throw new BookingAccessDeniedException(bookingId, _currentUser.Id);
         
         booking.Cancel();
         

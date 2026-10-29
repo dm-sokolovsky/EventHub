@@ -64,7 +64,7 @@ public sealed class Booking
         CreatedAt = createdAt;
     }
 
-    public static Booking CreatePending(Guid eventId,  Guid userId)
+    public static Booking CreatePending(Guid eventId,  Guid userId, int activeCount)
     {
         if (eventId == Guid.Empty)
             throw new ValidationException(nameof(EventId), "EventId cannot be empty");
@@ -72,6 +72,9 @@ public sealed class Booking
         if (userId == Guid.Empty)
             throw new ValidationException(nameof(EventId), "UserId cannot be empty");
 
+        if (activeCount >= BookingRules.MaxActiveBookingsPerUser)
+            throw new BookingLimitExceededException(userId, BookingRules.MaxActiveBookingsPerUser);
+        
         return new Booking(Guid.NewGuid(), eventId, userId, BookingStatus.Pending, DateTime.UtcNow);
     }
 

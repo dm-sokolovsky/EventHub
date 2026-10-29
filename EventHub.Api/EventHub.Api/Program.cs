@@ -1,11 +1,14 @@
 using System.Reflection;
+using System.Text;
 using EventHab.Application.Repositories;
 using EventHab.Application.Services;
 using EventHab.Application.Services.Abstractions;
 using EventHub.Api.Common.Middlewares;
 using EventHub.Api.Endpoints;
+using EventHub.Api.Extensions;
 using EventHub.Api.Services;
 using EventHub.Infrastructure;
+using EventHub.Infrastructure.Options;
 using EventHub.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +43,16 @@ builder.Services.AddHostedService<BookingProcessingBackgroundService>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .Validate(o => Encoding.UTF8.GetByteCount(o.Secret) >= 32, "Jwt: Secret must be at least 32 bytes.")
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IPasswordHasher, Sha256PasswordHasher>();
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 

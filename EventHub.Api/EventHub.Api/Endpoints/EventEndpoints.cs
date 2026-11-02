@@ -9,7 +9,8 @@ internal static class EventEndpoints
 {
     internal static IEndpointRouteBuilder MapEventEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/events");
+        var group = app.MapGroup("/api/events")
+            .RequireAuthorization("AdminOnly");
 
         group.MapGet("/", async (
             IEventService eventService,
@@ -20,7 +21,8 @@ internal static class EventEndpoints
         })
         .WithName("GetAllEvents")
         .Produces<PaginatedResult<EventInfo>>(StatusCodes.Status200OK)
-        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
+        .RequireAuthorization("AnyAuthenticated");
 
         group.MapGet("/{id:guid}", async (Guid id, IEventService eventService) =>
         {
@@ -30,7 +32,8 @@ internal static class EventEndpoints
         .WithName("GetEventById")
         .Produces<EventInfo>(StatusCodes.Status200OK)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
-        .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization("AnyAuthenticated");
 
         group.MapPost("/", async (CreateEvent request, IEventService eventService) =>
         {

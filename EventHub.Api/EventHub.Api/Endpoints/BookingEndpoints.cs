@@ -13,14 +13,14 @@ internal static class BookingEndpoints
     {
         var group = app.MapGroup("/api");
 
-        group.MapPost("/events/{eventId:guid}/{userId:guid}/book", async (
+        group.MapPost("/events/{eventId:guid}/book", async (
                 Guid eventId,
-                Guid userId,
                 IBookingService bookingService,
                 HttpContext httpContext,
+                ICurrentUser currentUser,
                 CancellationToken cancellationToken) =>
             {
-                var booking = await bookingService.CreateBookingAsync(eventId, userId, cancellationToken);
+                var booking = await bookingService.CreateBookingAsync(eventId, currentUser.Id, cancellationToken);
 
                 var location = $"/api/bookings/{booking.Id}";
                 httpContext.Response.Headers.Location = location;
@@ -31,7 +31,8 @@ internal static class BookingEndpoints
             .Produces<BookingInfo>(StatusCodes.Status202Accepted)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
             .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
-            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
+            .RequireAuthorization();
 
         group.MapGet("/bookings/{id:guid}", async (
                 Guid id,
@@ -44,9 +45,10 @@ internal static class BookingEndpoints
             .WithName("GetBookingById")
             .Produces<BookingInfo>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
-            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
+            .RequireAuthorization();
 
-        group.MapPost("/bookings/{id:guid}/cancel", async (
+        group.MapDelete("/bookings/{id:guid}/cancel", async (
                 Guid id,
                 IBookingService bookingService,
                 CancellationToken cancellationToken

@@ -8,7 +8,7 @@ internal static class UserEndpoints
 {
     internal static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/user");
+        var group = app.MapGroup("/api/user/auth/");
         
         group.MapPost("/register", async (RegisterRequest request, IUserService users, CancellationToken ct) =>
             {

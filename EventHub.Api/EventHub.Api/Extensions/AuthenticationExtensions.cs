@@ -33,8 +33,17 @@ public static class AuthenticationExtensions
                     NameClaimType = ClaimTypes.Name
                 };
             });
+        
+        services.AddAuthorization(options =>
+        {
+            // Политика только для администраторов
+            options.AddPolicy("AdminOnly", policy => 
+                policy.RequireRole("Admin"));
 
-        services.AddAuthorization();
+            // Политика для любого авторизованного пользователя
+            options.AddPolicy("AnyAuthenticated", policy => 
+                policy.RequireAuthenticatedUser());
+        });
         
         return services;
     }

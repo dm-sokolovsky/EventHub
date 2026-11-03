@@ -11,6 +11,7 @@ using EventHub.Api.Services;
 using EventHub.Infrastructure;
 using EventHub.Infrastructure.Options;
 using EventHub.Infrastructure.Repositories;
+using EventHub.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 
@@ -85,7 +86,7 @@ builder.Services.AddOptions<JwtOptions>()
     .Validate(o => Encoding.UTF8.GetByteCount(o.Secret) >= 32, "Jwt: Secret must be at least 32 bytes.")
     .ValidateOnStart();
 
-builder.Services.AddSingleton<IPasswordHasher, Sha256PasswordHasher>();
+builder.Services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -100,6 +101,8 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
+
+await AdminSeeder.SeedAsync(app.Services);
 
 app.MapOpenApi();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/openapi/v1.json", "Open Api V1"));

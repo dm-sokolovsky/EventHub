@@ -9,8 +9,7 @@ internal static class EventEndpoints
 {
     internal static IEndpointRouteBuilder MapEventEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/events")
-            .RequireAuthorization("AdminOnly");
+        var group = app.MapGroup("/api/events");
 
         group.MapGet("/", async (
             IEventService eventService,
@@ -43,7 +42,8 @@ internal static class EventEndpoints
         .WithName("CreateEvent")
         .Produces<EventInfo>(StatusCodes.Status201Created)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
-        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AdminOnly");
 
         group.MapPut("/{id:guid}", async (Guid id, EventUpsert request, IEventService eventService) =>
         {
@@ -54,7 +54,8 @@ internal static class EventEndpoints
         .Produces<EventInfo>(StatusCodes.Status200OK)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
-        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AdminOnly");
 
         group.MapDelete("/{id:guid}", async (Guid id, IEventService eventService) =>
         {
@@ -63,7 +64,8 @@ internal static class EventEndpoints
         })
         .WithName("DeleteEvent")
         .Produces<EventInfo>(StatusCodes.Status204NoContent)
-        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
+        .RequireAuthorization("AdminOnly");
 
         return app;
     }

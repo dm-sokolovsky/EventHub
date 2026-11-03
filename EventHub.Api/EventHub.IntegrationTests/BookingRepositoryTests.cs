@@ -30,6 +30,20 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         await context.Database.EnsureCreatedAsync();
     }
     
+    private async Task<Guid> CreateTestUserAsync(AppDbContext context)
+    {
+        var user = User.Create(
+            "testuser",
+            "passwordHash"
+        );
+        
+        context.Set<User>().Add(user);
+        await context.SaveChangesAsync();
+
+        var userId = user.Id;
+        
+        return  userId;
+    }
     
     [Fact]
     public async Task CreateBooking_NotFoundEvent_ThrowsDbUpdateException()
@@ -39,7 +53,7 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         // Arrange
         await using var context = CreateContext();
         var repo = new BookingRepository(context);
-        var booking = Booking.CreatePending(Guid.NewGuid());
+        var booking = Booking.CreatePending(Guid.NewGuid(),  Guid.NewGuid(), 1);
 
         // Act
 
@@ -59,8 +73,9 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         var repoEvent = new EventRepository(contextEvent);
         var repoBooking = new BookingRepository(contextBooking);
         var now = DateTime.UtcNow.AddHours(1);
+        var userId =  await CreateTestUserAsync(contextEvent);
         var eventData = Event.Create("Event1", now, now.AddHours(2), 10);
-        var booking = Booking.CreatePending(eventData.Id);
+        var booking = Booking.CreatePending(eventData.Id, userId, 1);
 
         // Act
         await repoEvent.AddAsync(eventData);
@@ -89,8 +104,9 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         var repoEvent = new EventRepository(contextEvent);
         var repoBooking = new BookingRepository(contextBooking);
         var now = DateTime.UtcNow.AddHours(1);
+        var userId =  await CreateTestUserAsync(contextEvent);
         var eventData = Event.Create("Event1", now, now.AddHours(2), 10);
-        var booking = Booking.CreatePending(eventData.Id);
+        var booking = Booking.CreatePending(eventData.Id, userId, 1);
 
         // Act
         await repoEvent.AddAsync(eventData);
@@ -117,9 +133,10 @@ public class BookingRepositoryTests(PostgresFixture fixture)
         var repoEvent = new EventRepository(contextEvent);
         var repoBooking = new BookingRepository(contextBooking);
         var now = DateTime.UtcNow.AddHours(1);
+        var userId =  await CreateTestUserAsync(contextEvent);
         var eventData = Event.Create("Event1", now, now.AddHours(2), 10);
-        var booking1 = Booking.CreatePending(eventData.Id);
-        var booking2 = Booking.CreatePending(eventData.Id);
+        var booking1 = Booking.CreatePending(eventData.Id, userId, 1);
+        var booking2 = Booking.CreatePending(eventData.Id, userId, 1);
 
         // Act
         await repoEvent.AddAsync(eventData);

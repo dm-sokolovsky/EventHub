@@ -124,6 +124,8 @@ public sealed class Event
     {
         AvailableSeats = Math.Min(TotalSeats, AvailableSeats + count);
     }
+
+    public bool IsActive(DateTime now) => StartAt <= now;
     
     private static void ThrowIfNotValid(
         string? title,

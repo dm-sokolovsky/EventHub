@@ -8,7 +8,8 @@ namespace EventHab.Application.Services;
 
 public sealed class BookingService(
     IBookingRepository bookingRepository,
-    IEventRepository eventRepository
+    IEventRepository eventRepository,
+    ICurrentUser currentUser
         ) : IBookingService
 {
 
@@ -16,21 +17,44 @@ public sealed class BookingService(
 
     private readonly IBookingRepository _bookingRepository = bookingRepository;
     private readonly IEventRepository _eventRepository = eventRepository;
+    private readonly ICurrentUser _currentUser = currentUser;
 
-    public async Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public async Task<BookingInfo> CreateBookingAsync(Guid eventId, Guid userId, CancellationToken cancellationToken = default)
     {
         await BookingLock.WaitAsync(cancellationToken);
+
         try
         {
-            var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken)
+            var now = DateTime.UtcNow;
+
+            // Получаем событие
+            var @event = await _eventRepository
+                             .GetByIdAsync(eventId, cancellationToken)
                          ?? throw new NotFoundException("Event not found");
 
-            if (!@event.TryReserveSeats())
-                throw new NoAvailableSeatsException("No available seats for this event");
+            // Проверяем дату события
+            if (@event.StartAt <= now)
+                throw new EventAlreadyStartedException(eventId, now);
 
-            var booking = Booking.CreatePending(eventId);
-            await _bookingRepository.AddAsync(booking, cancellationToken);
-            
+            // Подсчитываем активные брони пользователя
+            var activeCount = await _bookingRepository
+                .CountActiveBookingsAsync(userId, cancellationToken);
+
+            // Проверяем лимит при создании брони
+            var booking = Booking.CreatePending(
+                eventId,
+                userId,
+                activeCount);
+
+            // Резервируем место только после успешных проверок
+            if (!@event.TryReserveSeats())
+                throw new NoAvailableSeatsException(
+                    "No available seats for this event");
+
+            await _bookingRepository.AddAsync(
+                booking,
+                cancellationToken);
+
             return ToInfo(booking);
         }
         finally
@@ -46,7 +70,23 @@ public sealed class BookingService(
 
         return ToInfo(booking);
     }
-    
+
+    public async Task<BookingInfo> CancelledBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    {
+        var booking = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken)
+                      ?? throw new NotFoundException("Booking not found");
+        
+        if (booking.UserId != _currentUser.Id && !_currentUser.IsAdmin)
+            throw new BookingAccessDeniedException(bookingId, _currentUser.Id);
+        
+        booking.Cancel();
+        
+        await _bookingRepository.SaveChangesAsync(cancellationToken);
+        
+        return ToInfo(booking);
+    }
+
+
     private static BookingInfo ToInfo(Booking booking) => new()
     {
         Id = booking.Id,

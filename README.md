@@ -1,6 +1,6 @@
 # EventHub
 
-REST API для управления событиями (events) и бронированиями (bookings) на ASP.NET Core 10 (minimal API) с хранением данных в PostgreSQL.
+REST API для управления событиями, пользователями и бронированиями на ASP.NET Core 10 (minimal API) с хранением данных в PostgreSQL. Поддерживаются регистрация и вход по JWT, разграничение доступа по ролям и ограничения бронирований.
 
 ## Стек
 
@@ -8,6 +8,7 @@ REST API для управления событиями (events) и бронир
 - Слоистая архитектура из четырёх проектов: `Domain` ← `Application` ← `Infrastructure` ← `Api` (см. [Архитектура](#архитектура))
 - PostgreSQL + EF Core 10 (`Npgsql.EntityFrameworkCore.PostgreSQL`), доступ к данным через репозитории (`EventHub.Infrastructure/Repositories`)
 - Миграции EF Core лежат в `EventHub.Infrastructure/Migrations`, применяются автоматически при старте (`db.Database.Migrate()` в `Program.cs`)
+- JWT Bearer-аутентификация и политики авторизации `AdminOnly` / `AnyAuthenticated`; пароли хешируются через `IPasswordHasher`
 - `BackgroundService` — асинхронная обработка бронирований
 - Ошибки — доменные исключения (`EventHub.Domain/Exceptions`) превращаются в `ProblemDetails` (RFC 9457) через `IExceptionHandler` в `EventHub.Api` (`Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`)
 - Swagger UI (Swashbuckle) поверх встроенной OpenAPI-спеки `Microsoft.AspNetCore.OpenApi`
@@ -24,16 +25,16 @@ EventHub.Api ──► EventHub.Infrastructure ──► EventHab.Application �
 
 | Проект | Что внутри | Зависит от |
 |--------|------------|------------|
-| `EventHub.Domain` | Модели `Event`, `Booking`, `BookingStatus` с инвариантами; доменные исключения `NotFoundException`, `ValidationException`, `NoAvailableSeatsException` | — (чистый, без пакетов) |
-| `EventHab.Application` | Сервисы `EventService`, `BookingService` и их интерфейсы; интерфейсы репозиториев `IEventRepository`, `IBookingRepository`; DTO (`Contracts`) | `Domain` |
-| `EventHub.Infrastructure` | `AppDbContext`, конфигурации сущностей, миграции, реализации репозиториев (EF Core + Npgsql) | `Application`, `Domain` |
-| `EventHub.Api` | Composition root (`Program.cs`), minimal API эндпоинты, `GlobalExceptionHandler`, `BookingProcessingBackgroundService` | `Application`, `Infrastructure` |
+| `EventHub.Domain` | Модели `Event`, `Booking`, `User`, `BookingStatus`, `BookingRules` с инвариантами; доменные исключения, включая `BookingLimitExceededException` и `EventAlreadyStartedException` | — (чистый, без пакетов) |
+| `EventHab.Application` | Сервисы `EventService`, `BookingService`, `UserService` и их интерфейсы; интерфейсы репозиториев, в том числе `IUserRepository`; `ICurrentUser` и DTO (`Contracts`) | `Domain` |
+| `EventHub.Infrastructure` | `AppDbContext`, конфигурации сущностей, миграции, репозитории, `JwtTokenService`, `Sha256PasswordHasher` и `JwtOptions` | `Application`, `Domain` |
+| `EventHub.Api` | Composition root (`Program.cs`), minimal API эндпоинты (`UserEndpoints`, `EventEndpoints`, `BookingEndpoints`), `CurrentUser`, конфигурация JWT, `GlobalExceptionHandler`, `BookingProcessingBackgroundService` | `Application`, `Infrastructure` |
 
 Ключевые решения:
 
 - **Интерфейс репозитория объявлен в `Application`, реализация — в `Infrastructure`.** Сервисы не знают про EF Core: `Application` не ссылается на пакет `Microsoft.EntityFrameworkCore`, поэтому репозиторий возвращает уже материализованный `IReadOnlyList<Event>`, а `Skip`/`Take`/`ToListAsync` выполняются внутри `EventRepository`.
 - **Доменные исключения не знают про HTTP.** В `Domain` нет `ProblemDetails` и статус-кодов; соответствие «исключение → HTTP-статус» живёт только в `EventHub.Api/Common/Middlewares/GlobalExceptionHandlingMiddleware.cs`.
-- **Связывание через DI — только в `Program.cs`** (`AddScoped<IEventRepository, EventRepository>()` и т.д.).
+- **Связывание через DI — в composition root `Program.cs` и расширении `AddJwtAuthentication`** (`AddScoped<IEventRepository, EventRepository>()` и т.д.).
 
 ## Быстрый старт через Docker
 
@@ -57,6 +58,7 @@ docker compose down              # остановить (с удалением �
 - строка подключения передаётся переменной окружения `ConnectionStrings__DefaultConnection` с хостом `postgres` (имя сервиса в compose-сети, не `localhost`);
 - внутри контейнера Kestrel слушает только HTTP (`ASPNETCORE_HTTP_PORTS=8080`), HTTPS-порт наружу не проброшен — по `https://localhost:8080` API не откроется;
 - данные Postgres сохраняются в именованном томе `event_pgdata`.
+- секрет JWT и параметры `Issuer` / `Audience` должны совпадать при генерации и проверке токена; секрет не следует коммитить в репозиторий.
 
 ## Локальный запуск без Docker
 
@@ -80,6 +82,23 @@ dotnet run --project EventHub.Api
 
 Вместе с API стартует фоновый сервис `BookingProcessingBackgroundService` (см. [Фоновая обработка бронирований](#фоновая-обработка-бронирований)) — отдельно запускать его не нужно, он регистрируется через `AddHostedService`.
 
+### Настройки JWT
+
+Приложение загружает настройки из секции `Jwt` (`JwtOptions.SectionName`). Конфигурация используется как для генерации, так и для проверки токенов. При запуске проверяется, что `Secret` содержит не менее 32 байт в UTF-8.
+
+```json
+{
+  "Jwt": {
+    "Issuer": "<issuer>",
+    "Audience": "<audience>",
+    "Secret": "<secret-at-least-32-utf8-bytes>"
+  }
+}
+```
+
+Значения здесь — заполнители, не готовые учётные данные. Реальные секреты задаются через секреты разработки или переменные окружения (например, `Jwt__Secret`). При смене секрета ранее выданные токены перестанут проходить проверку подписи.
+
+
 ## База данных и миграции
 
 Схема описана через `IEntityTypeConfiguration` (`EventHub.Infrastructure/Configurations`), имена таблиц и колонок — snake_case с префиксом `cd_`:
@@ -87,9 +106,10 @@ dotnet run --project EventHub.Api
 | Сущность | Таблица | Колонки |
 |----------|---------|---------|
 | `Event` | `cd_events` | `id`, `title` (≤100), `description` (≤200), `start_at`, `end_at`, `total_seats`, `available_seats` |
-| `Booking` | `cd_bookings` | `id`, `event_id` (FK → `cd_events`, `ON DELETE CASCADE`), `status` (строка, ≤20), `created_at`, `processed_at` |
+| `Booking` | `cd_bookings` | `id`, `event_id` (FK → `cd_events`), `user_id` (FK → `Users`), `status`, `created_at`, `processed_at` |
+| `User` | `Users` (имя из сообщения PostgreSQL; проверь конфигурацию) | `Id`, `Login`, `PasswordHash`, `Role` (точные имена столбцов зависят от EF-конфигурации) |
 
-`Id` обеих сущностей генерируется в домене (`Guid.NewGuid()`), а не базой (`ValueGeneratedNever`). `BookingStatus` хранится строкой (`HasConversion<string>`).
+`Id` событий и бронирований генерируется в домене (`Guid.NewGuid()`), а не базой (`ValueGeneratedNever`). `BookingStatus` хранится строкой (`HasConversion<string>`). Для бронирования требуется существующий пользователь: PostgreSQL проверяет FK `FK_cd_bookings_Users_UserId`.
 
 Миграции применяются автоматически на старте приложения. `AppDbContext` и миграции живут в `EventHub.Infrastructure`, а точкой запуска (со строкой подключения) служит `EventHub.Api`, поэтому нужны оба флага. Добавить новую:
 
@@ -107,8 +127,10 @@ cd EventHub.Api
 dotnet test EventHub.sln
 ```
 
-- `EventHub.Tests` — юнит-тесты сервисов и доменных моделей;
+- `EventHub.Tests` — юнит-тесты сервисов и доменных моделей, в том числе проверка прошедших событий, лимита активных броней и независимости лимитов пользователей;
 - `EventHub.IntegrationTests` — тесты репозиториев (`EventRepositoryTests`, `BookingRepositoryTests`) и миграций (`MigrationTests`) на реальном PostgreSQL, который поднимается через [Testcontainers](https://dotnet.testcontainers.org/) (образ `postgres:16-alpine`). Нужен только запущенный Docker — отдельный `docker compose up` для них не требуется, контейнеры создаются и удаляются самими тестами.
+
+При интеграционном тестировании бронирований сначала сохраняйте `User` и `Event`, затем `Booking`: случайный `Guid` пользователя без записи в БД нарушит внешний ключ (`23503`). Проверять только `DbUpdateException` недостаточно, если тест должен подтверждать конкретное FK-ограничение.
 
 `EventRepositoryTests` и `BookingRepositoryTests` делят один Postgres-контейнер через `PostgresFixture` (`ICollectionFixture`, коллекция `RepositoryCollection`) — схема строится через `EnsureCreated()`/`EnsureDeletedAsync()` из текущей модели, история миграций не проверяется; тесты внутри коллекции выполняются последовательно. `MigrationTests` — отдельный класс со своим изолированным контейнером (вне общей коллекции): гоняет `Database.MigrateAsync()` и проверяет через `GetAppliedMigrationsAsync()`, что `InitialCreate` реально применяется.
 
@@ -156,19 +178,62 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 |---------------|-----------------|---------------------------|----------|
 | `Id`          | `Guid`          | генерируется сервером     | Идентификатор брони |
 | `EventId`     | `Guid`          | обязательно               | Событие, к которому относится бронь |
+| `UserId`      | `Guid`          | обязательно               | Пользователь — владелец брони; внешний ключ на `Users` |
 | `Status`      | `BookingStatus` | генерируется сервером     | Текущий статус |
 | `CreatedAt`   | `DateTime`      | генерируется сервером     | Момент создания |
 | `ProcessedAt` | `DateTime?`     | заполняется при обработке | Момент смены статуса |
 
 `BookingStatus`: `Pending` → `Confirmed` / `Rejected`. Статус меняется только доменными методами `Booking.Confirm()` / `Booking.Reject()`, которые атомарно проставляют `Status` и `ProcessedAt`.
 
-Бронь создаётся только для существующего события: `BookingService.CreateBookingAsync` читает событие через `IEventRepository` и бросает `NotFoundException` (`404`), если его нет. Перед созданием брони резервируется место через `Event.TryReserveSeats()`; если свободных мест нет — `NoAvailableSeatsException` (`409 Conflict`), бронь не создаётся.
+Бронь создаётся только для существующего события: `BookingService.CreateBookingAsync` читает событие через `IEventRepository` и бросает `NotFoundException`, если его нет. Нельзя бронировать начавшееся или прошедшее событие: выбрасывается `EventAlreadyStartedException`. Если свободных мест нет — `NoAvailableSeatsException`, бронь не создаётся.
+
+**Лимит активных бронирований — 10 на пользователя** (`BookingRules.MaxActiveBookingsPerUser`). `BookingRepository.CountActiveBookingsAsync(userId)` считает брони конкретного пользователя в активных статусах (`Pending`, `Confirmed`); `Booking.CreatePending(eventId, userId, activeCount)` выбрасывает `BookingLimitExceededException`, когда лимит достигнут. Лимиты разных пользователей не суммируются. Проверка даты и лимита должна выполняться **до** `Event.TryReserveSeats()`, чтобы отклонённая бронь не уменьшала `AvailableSeats`.
+
+Следует атомарно сохранять изменения количества мест и запись бронирования: внутрипроцессная блокировка сама по себе не заменяет транзакцию БД.
 
 Проверка события и резервирование места выполняются под общим статическим `SemaphoreSlim` (`BookingService.BookingLock`), поэтому в рамках одного процесса овербукинг при конкурентных запросах невозможен. Это *внутрипроцессная* блокировка: при запуске нескольких экземпляров API она не защищает — потребуется блокировка на уровне БД.
 
+## Пользователи, JWT и роли
+
+Для регистрации и входа используются эндпоинты `/api/user/auth/register` и `/api/user/auth/login` (сверяй HTTP-методы, DTO и коды успешных ответов с `UserEndpoints.cs`).
+
+```http
+POST /api/user/auth/register
+Content-Type: application/json
+
+{
+  "login": "example_user",
+  "password": "ExamplePass123!"
+}
+```
+
+```http
+POST /api/user/auth/login
+Content-Type: application/json
+
+{
+  "login": "example_user",
+  "password": "ExamplePass123!"
+}
+```
+
+При успешном входе возвращается `accessToken`. `UserService.LoginAsync` ищет пользователя по `Login.Trim()`, проверяет пароль через `IPasswordHasher.Verify(storedHash, suppliedPassword)` и генерирует JWT с ID, логином и ролью. Роль берётся из `User.Role`, а не из данных запроса на вход.
+
+Для защищённых методов:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+В Swagger при схеме OpenAPI `type: http`, `scheme: bearer` вводится **только токен**: префикс `Bearer` Swagger добавляет сам. Для схемы `apiKey` заголовок нужно формировать вручную; рекомендуемая схема — HTTP Bearer.
+
+Настроены политики `AdminOnly` (`RequireRole("Admin")`) и `AnyAuthenticated` (`RequireAuthenticatedUser()`). Для доступа администратора нужен существующий пользователь с ролью `Admin`; отдельного login-эндпоинта для администратора нет. После изменения роли необходимо получить новый токен. Конкретные требования доступа для каждого маршрута определяются в `*Endpoints.cs` (например, через `RequireAuthorization`).
+
+**Безопасность:** текущая реализация `Sha256PasswordHasher` использует обычный SHA-256, который не подходит для надёжного хранения пользовательских паролей. До использования в production следует перейти на адаптивный парольный хеш (`PasswordHasher<TUser>` / Argon2id), предусмотрев миграцию старых хешей. Публичная регистрация не должна позволять самостоятельно назначать роль `Admin`.
+
 ## Эндпоинты
 
-Все маршруты живут под префиксом `/api`.
+Все маршруты живут под префиксом `/api`. На защищённых маршрутах возможны ответы `401 Unauthorized` (отсутствующий или недействительный токен) и `403 Forbidden` (недостаточно прав).
 
 ### События — `/api/events`
 
@@ -179,7 +244,7 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 | POST   | `/api/events`              | Создать событие                  | `201 Created` + `Location` | `400 Bad Request` |
 | PUT    | `/api/events/{id}`         | Обновить событие целиком         | `200 OK`         | `404 Not Found` / `400 Bad Request` |
 | DELETE | `/api/events/{id}`         | Удалить событие                  | `204 No Content` | — |
-| POST   | `/api/events/{id}/book`    | Создать бронь для события        | `202 Accepted` + `Location` | `404 Not Found` / `409 Conflict` |
+| POST   | `/api/events/{id}/book`    | Создать бронь для события        | `202 Accepted` + `Location` | `404 Not Found`; ошибки отсутствия мест, начала события и лимита бронирований (HTTP-коды определяет `GlobalExceptionHandler`) |
 
 ### Бронирования — `/api/bookings`
 
@@ -189,7 +254,7 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 
 `POST /api/events/{id}/book` отвечает `202 Accepted`, а не `201 Created`: бронь создаётся синхронно, но подтверждается/отклоняется асинхронно фоновым сервисом, поэтому на момент ответа она ещё в статусе `Pending`. В ответе — заголовок `Location: /api/bookings/{bookingId}`, по которому можно отследить итоговый статус.
 
-Текущие особенности поведения, о которых стоит знать:
+Текущие особенности поведения, о которых стоит знать (часть описана в исходном README и требует повторной проверки после изменений эндпоинтов):
 
 - `GET /api/events` принимает только фильтры `title`/`from`/`to`; параметры `page`/`pageSize` из query-строки **не читаются** — выдача всегда первая страница по 10 элементов (значения по умолчанию `EventService.GetAllEventsAsync`);
 - фильтр `to` сравнивается с `StartAt` события (`StartAt <= to`), а не с `EndAt`;
@@ -201,7 +266,7 @@ dotnet test EventHub.sln --filter "FullyQualifiedName~EventRepositoryTests"
 **Список событий с фильтрацией**
 
 ```http
-GET /api/events?title=митинг&from=2026-07-01T00:00:00Z&to=2026-07-31T23:59:59Z
+GET /api/events?title=митинг&from=2027-07-01T00:00:00Z&to=2027-07-31T23:59:59Z
 ```
 
 | Параметр | Тип         | Описание |
@@ -219,8 +284,8 @@ GET /api/events?title=митинг&from=2026-07-01T00:00:00Z&to=2026-07-31T23:59
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "title": "Митинг команды",
       "description": "Еженедельный синк",
-      "startAt": "2026-07-20T10:00:00Z",
-      "endAt": "2026-07-20T11:00:00Z",
+      "startAt": "2027-07-20T10:00:00Z",
+      "endAt": "2027-07-20T11:00:00Z",
       "totalSeats": 10,
       "availableSeats": 9
     }
@@ -241,8 +306,8 @@ Content-Type: application/json
 {
   "title": "Митинг команды",
   "description": "Еженедельный синк",
-  "startAt": "2026-07-20T10:00:00Z",
-  "endAt": "2026-07-20T11:00:00Z",
+  "startAt": "2027-07-20T10:00:00Z",
+  "endAt": "2027-07-20T11:00:00Z",
   "totalSeats": 10
 }
 ```
@@ -258,8 +323,8 @@ Content-Type: application/json
 {
   "title": "Митинг команды (перенесён)",
   "description": "Еженедельный синк",
-  "startAt": "2026-07-21T10:00:00Z",
-  "endAt": "2026-07-21T11:00:00Z",
+  "startAt": "2027-07-21T10:00:00Z",
+  "endAt": "2027-07-21T11:00:00Z",
   "totalSeats": 12
 }
 ```
@@ -332,9 +397,15 @@ GET /api/bookings/b1f2c3d4-0000-0000-0000-000000000000
 | `NotFoundException`         | `404`       | Событие или бронь не найдены |
 | `ValidationException`       | `400`       | Нарушены доменные инварианты события |
 | `NoAvailableSeatsException` | `409`       | Нет свободных мест при создании брони |
+| `InvalidCredentialsException` | уточнить по обработчику | Неверный логин или пароль; рекомендуется `401` |
+| исключение занятого логина | уточнить по обработчику | Регистрация с существующим логином; рекомендуется `409` |
+| `EventAlreadyStartedException` | уточнить по обработчику | Нельзя бронировать начавшееся/прошедшее событие |
+| `BookingLimitExceededException` | уточнить по обработчику | Достигнут лимит 10 активных броней |
 | любое другое                | `500`       | Непредвиденная ошибка; текст исключения уходит только в лог |
 
 Файлы конверта `EventHab.Application/Contracts/ApiResult.cs`, `EventHub.Api/Common/ApiResultActionResult.cs`, `ApiResultWithLocationResult.cs` и `ApiBaseResultExtensions.cs` остались от прежней версии на контроллерах и сейчас нигде не используются — minimal API-эндпоинты их не вызывают.
+
+Для JWT middleware `OnChallenge` формирует ответ `401`, а `OnForbidden` — `403` в JSON; это отдельный путь обработки, не обязательно формат `ProblemDetails`. Фактическое отображение новых исключений на HTTP-коды следует проверить в текущей версии `GlobalExceptionHandler`.
 
 `EventHub.Domain.Exceptions.ValidationException` — собственный тип, затеняющий `System.ComponentModel.DataAnnotations.ValidationException`; когда оба в области видимости, нужен явный `using`-алиас (пример — `EventHub.Domain/Models/Event.cs`).
 
@@ -344,7 +415,7 @@ GET /api/bookings/b1f2c3d4-0000-0000-0000-000000000000
 EventHub.Api/                       # каталог решения (EventHub.sln, compose.yaml)
 ├── compose.yaml                    # Postgres + API
 ├── EventHub.Domain/                # домен, без зависимостей
-│   ├── Models/                     # Event, Booking, BookingStatus
+│   ├── Models/                     # Event, Booking, User, BookingStatus, BookingRules
 │   └── Exceptions/                 # NotFoundException, ValidationException,
 │                                   # NoAvailableSeatsException
 ├── EventHab.Application/           # сценарии использования
@@ -357,14 +428,15 @@ EventHub.Api/                       # каталог решения (EventHub.sl
 │       └── BookingService.cs
 ├── EventHub.Infrastructure/        # EF Core + PostgreSQL
 │   ├── AppDbContext.cs
-│   ├── Configurations/             # EventConfiguration, BookingConfiguration
+│   ├── Configurations/             # EventConfiguration, BookingConfiguration, конфигурация User
 │   ├── Migrations/
-│   └── Repositories/               # EventRepository, BookingRepository
+│   └── Repositories/               # EventRepository, BookingRepository, UserRepository
 ├── EventHub.Api/                   # composition root и HTTP-слой
 │   ├── Dockerfile
 │   ├── Endpoints/
+│   │   ├── UserEndpoints.cs        # регистрация и вход
 │   │   ├── EventEndpoints.cs       # группа /api/events
-│   │   └── BookingEndpoints.cs     # группа /api: /events/{id}/book, /bookings/{id}
+│   │   └── BookingEndpoints.cs     # бронирования
 │   ├── Services/
 │   │   └── BookingProcessingBackgroundService.cs
 │   ├── Common/

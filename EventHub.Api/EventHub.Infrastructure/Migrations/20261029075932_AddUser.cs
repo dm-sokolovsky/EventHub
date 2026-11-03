@@ -32,6 +32,13 @@ namespace EventHub.Infrastructure.Migrations
                     table.PrimaryKey("PK_Users", x => x.id);
                 });
 
+            migrationBuilder.Sql(@"
+        INSERT INTO ""Users"" (id, login, password_hash, role)
+        VALUES ('00000000-0000-0000-0000-000000000000', 'system_deleted', 'no_password', 'User')
+        ON CONFLICT (id) DO NOTHING;
+    ");
+            
+            
             migrationBuilder.CreateIndex(
                 name: "IX_cd_bookings_UserId",
                 table: "cd_bookings",

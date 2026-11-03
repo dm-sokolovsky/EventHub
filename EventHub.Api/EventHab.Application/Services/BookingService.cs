@@ -22,22 +22,39 @@ public sealed class BookingService(
     public async Task<BookingInfo> CreateBookingAsync(Guid eventId, Guid userId, CancellationToken cancellationToken = default)
     {
         await BookingLock.WaitAsync(cancellationToken);
+
         try
         {
-            var now = DateTime.Now;
-            var activeCount = 1;
-            var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken)
+            var now = DateTime.UtcNow;
+
+            // Получаем событие
+            var @event = await _eventRepository
+                             .GetByIdAsync(eventId, cancellationToken)
                          ?? throw new NotFoundException("Event not found");
 
-            if (!@event.TryReserveSeats())
-                throw new NoAvailableSeatsException("No available seats for this event");
-            
-            if (@event.IsActive(now))
+            // Проверяем дату события
+            if (@event.StartAt <= now)
                 throw new EventAlreadyStartedException(eventId, now);
 
-            var booking = Booking.CreatePending(eventId, userId, activeCount);
-            await _bookingRepository.AddAsync(booking, cancellationToken);
-            
+            // Подсчитываем активные брони пользователя
+            var activeCount = await _bookingRepository
+                .CountActiveBookingsAsync(userId, cancellationToken);
+
+            // Проверяем лимит при создании брони
+            var booking = Booking.CreatePending(
+                eventId,
+                userId,
+                activeCount);
+
+            // Резервируем место только после успешных проверок
+            if (!@event.TryReserveSeats())
+                throw new NoAvailableSeatsException(
+                    "No available seats for this event");
+
+            await _bookingRepository.AddAsync(
+                booking,
+                cancellationToken);
+
             return ToInfo(booking);
         }
         finally

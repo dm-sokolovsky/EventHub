@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using EventHub.Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -31,6 +32,42 @@ public static class AuthenticationExtensions
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
                     RoleClaimType = ClaimTypes.Role,
                     NameClaimType = ClaimTypes.Name
+                };
+                
+                options.Events = new JwtBearerEvents
+                {
+                    // 1. Ошибка, если токен невалидный, просрочен или отсутствует (401 Unauthorized)
+                    OnChallenge = async context =>
+                    {
+                        // Отменяем стандартный встроенный ответ
+                        context.HandleResponse();
+
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        context.Response.ContentType = "application/json";
+
+                        var result = JsonSerializer.Serialize(new 
+                        { 
+                            error = "Вы не авторизованы", 
+                            detail = context.ErrorDescription ?? "Токен отсутствует или недействителен" 
+                        });
+
+                        await context.Response.WriteAsync(result);
+                    },
+
+                    // 2. Ошибка, если токен валидный, но роль/политика не подходит (403 Forbidden)
+                    OnForbidden = async context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        context.Response.ContentType = "application/json";
+
+                        var result = JsonSerializer.Serialize(new 
+                        { 
+                            error = "Доступ запрещен", 
+                            detail = "У вас недостаточно прав для выполнения этого действия" 
+                        });
+
+                        await context.Response.WriteAsync(result);
+                    }
                 };
             });
         

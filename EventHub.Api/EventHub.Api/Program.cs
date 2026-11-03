@@ -12,6 +12,7 @@ using EventHub.Infrastructure;
 using EventHub.Infrastructure.Options;
 using EventHub.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -29,7 +30,39 @@ builder.Services.AddSwaggerGen(options =>
     options.IncludeXmlComments(xmlPath);
 }); 
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        // 1. Инициализируем компоненты и коллекцию схем безопасности, если они null
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+
+        // 2. Безопасно добавляем определение в коллекцию
+        document.Components.SecuritySchemes.TryAdd("Bearer", new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Введите JWT токен без префикса Bearer"
+        });
+
+        // 3. Создаем схему безопасности (используя правильный конструктор и List<string>)
+        var requirements = new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecuritySchemeReference("Bearer", document),
+                new List<string>()
+            }
+        };
+
+        // 4. Применяем требование глобально ко всему документу
+        document.Security ??= new List<OpenApiSecurityRequirement>();
+        document.Security.Add(requirements);
+
+        return Task.CompletedTask;
+    });
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -73,6 +106,9 @@ app.UseSwaggerUI(c => c.SwaggerEndpoint("/openapi/v1.json", "Open Api V1"));
 
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Корень редиректит на Swagger UI, чтобы http://localhost:8080 открывался сразу.
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();

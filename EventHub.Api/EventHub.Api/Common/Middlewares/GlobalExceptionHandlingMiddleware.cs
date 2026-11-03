@@ -28,6 +28,7 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
             EventAlreadyStartedException => (StatusCodes.Status400BadRequest, "Event has already been started"),
             BookingLimitExceededException => (StatusCodes.Status409Conflict, "Booking limit exceeded"),
             BookingAccessDeniedException => (StatusCodes.Status403Forbidden, "Access denied"),
+            InvalidCredentialsException => (StatusCodes.Status400BadRequest, "Invalid credentials"),
             _ => (StatusCodes.Status500InternalServerError, "Internal Server Error")
         };
 

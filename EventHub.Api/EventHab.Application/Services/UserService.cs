@@ -29,8 +29,8 @@ public sealed class UserService(
     public async Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken ct)
     {
         var user = await userRepository.GetByLoginAsync(request.Login.Trim(), ct);
-
-        if (user is null || !hasher.Verify(request.Password, user.PasswordHash))
+        
+        if (user is null || !hasher.Verify(user.PasswordHash, request.Password))
             throw new InvalidCredentialsException();
 
         return new AuthResult(tokens.GenerateToken(user.Id, user.Login, user.Role.ToString()));

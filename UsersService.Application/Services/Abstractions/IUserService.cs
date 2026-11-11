@@ -1,0 +1,9 @@
+using UsersService.Application.Contracts;
+
+namespace UsersService.Application.Services.Abstractions;
+
+public interface IUserService
+{
+    Task<Guid> RegisterAsync(RegisterRequest request, CancellationToken ct);
+    Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken ct);
+}

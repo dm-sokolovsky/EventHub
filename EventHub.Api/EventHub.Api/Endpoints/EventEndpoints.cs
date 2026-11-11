@@ -20,7 +20,8 @@ internal static class EventEndpoints
         })
         .WithName("GetAllEvents")
         .Produces<PaginatedResult<EventInfo>>(StatusCodes.Status200OK)
-        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
+        .RequireAuthorization("AnyAuthenticated");
 
         group.MapGet("/{id:guid}", async (Guid id, IEventService eventService) =>
         {
@@ -30,7 +31,8 @@ internal static class EventEndpoints
         .WithName("GetEventById")
         .Produces<EventInfo>(StatusCodes.Status200OK)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
-        .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization("AnyAuthenticated");
 
         group.MapPost("/", async (CreateEvent request, IEventService eventService) =>
         {
@@ -40,7 +42,8 @@ internal static class EventEndpoints
         .WithName("CreateEvent")
         .Produces<EventInfo>(StatusCodes.Status201Created)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
-        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AdminOnly");
 
         group.MapPut("/{id:guid}", async (Guid id, EventUpsert request, IEventService eventService) =>
         {
@@ -51,7 +54,8 @@ internal static class EventEndpoints
         .Produces<EventInfo>(StatusCodes.Status200OK)
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
-        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization("AdminOnly");
 
         group.MapDelete("/{id:guid}", async (Guid id, IEventService eventService) =>
         {
@@ -60,7 +64,8 @@ internal static class EventEndpoints
         })
         .WithName("DeleteEvent")
         .Produces<EventInfo>(StatusCodes.Status204NoContent)
-        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+        .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
+        .RequireAuthorization("AdminOnly");
 
         return app;
     }

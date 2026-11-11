@@ -18,6 +18,11 @@ public sealed class Booking
     public Guid EventId { get; private set; }
     
     /// <summary>
+    /// Идентификатор пользователя 
+    /// </summary>
+    public Guid UserId { get; private set; }
+    
+    /// <summary>
     /// Текущий статус брони
     /// </summary>
     public BookingStatus Status { get; private set; }
@@ -34,6 +39,8 @@ public sealed class Booking
 
     public Event? Event { get; private set; }
 
+    public User User { get; private set; } = null!;
+
     private Booking() {}
     
     /// <summary>
@@ -41,27 +48,36 @@ public sealed class Booking
     /// </summary>
     /// <param name="id"></param>
     /// <param name="eventId"></param>
+    /// <param name="userId"></param>
     /// <param name="status"></param>
     /// <param name="createdAt"></param>
     private Booking(
         Guid id, 
         Guid eventId, 
+        Guid userId,
         BookingStatus status, 
         DateTime createdAt
         )
     {
         Id = id;
         EventId = eventId;
+        UserId = userId;
         Status = status;
         CreatedAt = createdAt;
     }
 
-    public static Booking CreatePending(Guid eventId)
+    public static Booking CreatePending(Guid eventId,  Guid userId, int activeCount)
     {
         if (eventId == Guid.Empty)
             throw new ValidationException(nameof(EventId), "EventId cannot be empty");
+        
+        if (userId == Guid.Empty)
+            throw new ValidationException(nameof(EventId), "UserId cannot be empty");
 
-        return new Booking(Guid.NewGuid(), eventId, BookingStatus.Pending, DateTime.UtcNow);
+        if (activeCount >= BookingRules.MaxActiveBookingsPerUser)
+            throw new BookingLimitExceededException(userId, BookingRules.MaxActiveBookingsPerUser);
+        
+        return new Booking(Guid.NewGuid(), eventId, userId, BookingStatus.Pending, DateTime.UtcNow);
     }
 
     public void Confirm()
@@ -73,6 +89,15 @@ public sealed class Booking
     public void Reject()
     {
         Status = BookingStatus.Rejected;
+        ProcessedAt = DateTime.UtcNow;
+    }
+    
+    public void Cancel()
+    {
+        if (Status is BookingStatus.Cancelled or BookingStatus.Rejected)
+            throw new InvalidBookingStateException($"Booking in status {Status} cannot be cancelled");
+        
+        Status = BookingStatus.Cancelled;
         ProcessedAt = DateTime.UtcNow;
     }
 }

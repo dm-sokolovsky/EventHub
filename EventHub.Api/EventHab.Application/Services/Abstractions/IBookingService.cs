@@ -12,9 +12,10 @@ public interface IBookingService
     /// Создание брони для указанного события
     /// </summary>
     /// <param name="eventId">Id события</param>
+    /// <param name="userId">Id пользователя</param>
     /// <returns></returns>
     /// <exception cref="NotFoundException">Событие не найдено или было удалено</exception>
-    Task<BookingInfo> CreateBookingAsync(Guid eventId, CancellationToken cancellationToken = default);
+    Task<BookingInfo> CreateBookingAsync(Guid eventId, Guid userId, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Получение брони по идентификатору
@@ -22,5 +23,12 @@ public interface IBookingService
     /// <param name="bookingId">Id брони</param>
     /// <returns></returns>
     Task<BookingInfo?> GetBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Отмена брони по идентификатору 
+    /// </summary>
+    /// <param name="bookingId"></param>
+    /// <returns></returns>
+    Task<BookingInfo> CancelledBookingByIdAsync(Guid bookingId, CancellationToken cancellationToken = default);
     
 }

@@ -55,7 +55,7 @@ services:
   users-service:
     build:
       context: .
-      dockerfile: UsersService.Api/Dockerfile
+      dockerfile: src/UsersService.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=users-db;Port=5432;Database=users;Username=postgres;Password=postgres
@@ -68,7 +68,7 @@ services:
   events-service:
     build:
       context: .
-      dockerfile: EventsService.Api/Dockerfile
+      dockerfile: src/EventsService.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=events-db;Port=5432;Database=events;Username=postgres;Password=postgres
@@ -81,7 +81,7 @@ services:
   bookings-service:
     build:
       context: .
-      dockerfile: BookingsService.Api/Dockerfile
+      dockerfile: src/BookingsService.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=bookings-db;Port=5432;Database=bookings;Username=postgres;Password=postgres

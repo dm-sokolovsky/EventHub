@@ -1,0 +1,37 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="/docker-compose.yml" />
+    <File Path="/.dockerignore" />
+    <File Path="/.gitignore" />
+    <File Path="/README.md" />
+    <File Path="docker-compose.yml" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BookingsService/">
+    <Project Path="src/BookingsService.Api/BookingsService.Api.csproj" />
+    <Project Path="src/BookingsService.Application/BookingsService.Application.csproj" />
+    <Project Path="src/BookingsService.Domain/BookingsService.Domain.csproj" />
+    <Project Path="src/BookingsService.Infrastructure/BookingsService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/EventsService/">
+    <Project Path="src/EventsService.Api/EventsService.Api.csproj" />
+    <Project Path="src/EventsService.Application/EventsService.Application.csproj" />
+    <Project Path="src/EventsService.Domain/EventsService.Domain.csproj" />
+    <Project Path="src/EventsService.Infrastructure/EventsService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/UsersService/">
+    <Project Path="src/UsersService.Api/UsersService.Api.csproj" />
+    <Project Path="src/UsersService.Application/UsersService.Application.csproj" />
+    <Project Path="src/UsersService.Domain/UsersService.Domain.csproj" />
+    <Project Path="src/UsersService.Infrastructure/UsersService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BookingsService.IntegrationTests/BookingsService.IntegrationTests.csproj" />
+    <Project Path="tests/BookingsService.Tests/BookingsService.Tests.csproj" />
+    <Project Path="tests/EventsService.IntegrationTests/EventsService.IntegrationTests.csproj" />
+    <Project Path="tests/EventsService.Tests/EventsService.Tests.csproj" />
+    <Project Path="tests/UsersService.IntegrationTests/UsersService.IntegrationTests.csproj" />
+    <Project Path="tests/UsersService.Tests/UsersService.Tests.csproj" />
+  </Folder>
+</Solution>

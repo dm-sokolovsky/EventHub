@@ -7,13 +7,13 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["BookingsService.Api/BookingsService.Api.csproj", "BookingsService.Api/"]
-COPY ["BookingsService.Application/BookingsService.Application.csproj", "BookingsService.Application/"]
-COPY ["BookingsService.Domain/BookingsService.Domain.csproj", "BookingsService.Domain/"]
-COPY ["BookingsService.Infrastructure/BookingsService.Infrastructure.csproj", "BookingsService.Infrastructure/"]
-RUN dotnet restore "BookingsService.Api/BookingsService.Api.csproj"
+COPY ["src/BookingsService.Api/BookingsService.Api.csproj", "src/BookingsService.Api/"]
+COPY ["src/BookingsService.Application/BookingsService.Application.csproj", "src/BookingsService.Application/"]
+COPY ["src/BookingsService.Domain/BookingsService.Domain.csproj", "src/BookingsService.Domain/"]
+COPY ["src/BookingsService.Infrastructure/BookingsService.Infrastructure.csproj", "src/BookingsService.Infrastructure/"]
+RUN dotnet restore "src/BookingsService.Api/BookingsService.Api.csproj"
 COPY . .
-WORKDIR "/src/BookingsService.Api"
+WORKDIR "/src/src/BookingsService.Api"
 RUN dotnet build "./BookingsService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

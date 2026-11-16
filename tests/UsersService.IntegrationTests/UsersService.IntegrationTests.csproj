@@ -22,8 +22,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\UsersService.Application\UsersService.Application.csproj" />
-      <ProjectReference Include="..\..\UsersService.Infrastructure\UsersService.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\src\UsersService.Application\UsersService.Application.csproj" />
+      <ProjectReference Include="..\..\src\UsersService.Infrastructure\UsersService.Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>

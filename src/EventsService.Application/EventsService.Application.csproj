@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\EventHub.Contracts\EventHub.Contracts.csproj" />
       <ProjectReference Include="..\EventsService.Domain\EventsService.Domain.csproj" />
     </ItemGroup>
 

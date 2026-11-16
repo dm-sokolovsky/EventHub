@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using BookingsService.Application.Contracts;
+using EventHub.Contracts;
 using BookingsService.Application.Services.Abstractions;
 
 namespace BookingsService.Infrastructure.Gateways;

@@ -1,7 +1,7 @@
-namespace BookingsService.Application.Contracts;
+namespace EventHub.Contracts;
 
 /// <summary>
-/// Срез данных события, необходимый сервису бронирований
+/// Срез данных события, передаваемый между сервисами
 /// </summary>
 /// <param name="Id">Id события</param>
 /// <param name="StartAt">Дата и время начала события</param>

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using UsersService.Application.Contracts;
+using EventHub.Contracts;
 using UsersService.Application.Repositories;
 using UsersService.Application.Services;
 using UsersService.Application.Services.Abstractions;

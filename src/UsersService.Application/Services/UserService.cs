@@ -1,4 +1,4 @@
-using UsersService.Application.Contracts;
+using EventHub.Contracts;
 using UsersService.Application.Repositories;
 using UsersService.Application.Services.Abstractions;
 using UsersService.Domain.Exceptions;

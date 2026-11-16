@@ -8,6 +8,9 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/" />
+  <Folder Name="/src/Shared/">
+    <Project Path="src/EventHub.Contracts/EventHub.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/BookingsService/">
     <Project Path="src/BookingsService.Api/BookingsService.Api.csproj" />
     <Project Path="src/BookingsService.Application/BookingsService.Application.csproj" />

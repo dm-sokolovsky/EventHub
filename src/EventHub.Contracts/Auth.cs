@@ -1,4 +1,4 @@
-namespace UsersService.Application.Contracts;
+namespace EventHub.Contracts;
 
 public sealed record RegisterRequest(string Login, string Password);
 

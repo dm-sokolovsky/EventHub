@@ -1,4 +1,4 @@
-using BookingsService.Application.Contracts;
+using EventHub.Contracts;
 
 namespace BookingsService.Application.Services.Abstractions;
 

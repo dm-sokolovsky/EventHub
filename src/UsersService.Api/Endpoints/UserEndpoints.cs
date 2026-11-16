@@ -1,4 +1,4 @@
-using UsersService.Application.Contracts;
+using EventHub.Contracts;
 using UsersService.Application.Services.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 

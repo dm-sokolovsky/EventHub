@@ -1,4 +1,4 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
@@ -7,10 +7,13 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["../EventsService.Api/EventsService.Api.csproj", "../EventsService.Api/"]
-RUN dotnet restore "../EventsService.Api/EventsService.Api.csproj"
+COPY ["EventsService.Api/EventsService.Api.csproj", "EventsService.Api/"]
+COPY ["EventsService.Application/EventsService.Application.csproj", "EventsService.Application/"]
+COPY ["EventsService.Domain/EventsService.Domain.csproj", "EventsService.Domain/"]
+COPY ["EventsService.Infrastructure/EventsService.Infrastructure.csproj", "EventsService.Infrastructure/"]
+RUN dotnet restore "EventsService.Api/EventsService.Api.csproj"
 COPY . .
-WORKDIR "/src/../EventsService.Api"
+WORKDIR "/src/EventsService.Api"
 RUN dotnet build "./EventsService.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

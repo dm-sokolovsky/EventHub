@@ -20,8 +20,8 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.15" />
-      <ProjectReference Include="..\EventsService.Application\EventsService.Application.csproj" />
-      <ProjectReference Include="..\EventsService.Infrastructure\EventsService.Infrastructure.csproj" />
+      <ProjectReference Include="..\..\UsersService.Application\UsersService.Application.csproj" />
+      <ProjectReference Include="..\..\UsersService.Infrastructure\UsersService.Infrastructure.csproj" />
     </ItemGroup>
 
 </Project>

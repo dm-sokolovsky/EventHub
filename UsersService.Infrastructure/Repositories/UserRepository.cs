@@ -6,8 +6,6 @@ namespace UsersService.Infrastructure.Repositories;
 
 public sealed class UserRepository(AppDbContext appDbContext) : IUserRepository
 {
-    private readonly AppDbContext _appDbContext = appDbContext;
-    
     public async Task<bool> ExistsByLoginAsync(string login, CancellationToken ct) 
         => await appDbContext.Users.AnyAsync(u => u.Login == login, ct);
 

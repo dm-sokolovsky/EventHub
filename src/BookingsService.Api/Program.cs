@@ -3,6 +3,7 @@ using BookingsService.Api.Common.Middlewares;
 using BookingsService.Api.Endpoints;
 using BookingsService.Api.Extensions;
 using BookingsService.Api.Services;
+using BookingsService.Application;
 using BookingsService.Application.Repositories;
 using BookingsService.Application.Services;
 using BookingsService.Application.Services.Abstractions;
@@ -61,6 +62,9 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 // Заглушка EventsService: в памяти процесса, пока нет интеграции (Kafka)
 builder.Services.AddSingleton<InMemoryEventsGateway>();
 builder.Services.AddSingleton<IEventsGateway>(sp => sp.GetRequiredService<InMemoryEventsGateway>());
+
+// Kafka
+builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
 
 builder.Services.AddHostedService<BookingProcessingBackgroundService>();
 

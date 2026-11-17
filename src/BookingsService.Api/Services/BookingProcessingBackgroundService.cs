@@ -1,6 +1,8 @@
+using BookingsService.Application;
 using BookingsService.Application.Repositories;
 using BookingsService.Application.Services.Abstractions;
 using BookingsService.Domain.Models;
+using EventHub.Contracts;
 
 namespace BookingsService.Api.Services;
 
@@ -18,13 +20,17 @@ public class BookingProcessingBackgroundService : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<BookingProcessingBackgroundService> _logger;
+    private readonly IEventPublisher _eventPublisher;
 
     public BookingProcessingBackgroundService(
         IServiceScopeFactory scopeFactory,
-        ILogger<BookingProcessingBackgroundService> logger)
+        ILogger<BookingProcessingBackgroundService> logger,
+        IEventPublisher eventPublisher
+        )
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _eventPublisher = eventPublisher;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -96,6 +102,8 @@ public class BookingProcessingBackgroundService : BackgroundService
 
             booking.Confirm();
             await repoBooking.SaveChangesAsync(stoppingToken);
+            await _eventPublisher.PublishAsync(new BookingConfirmed(booking.Id, booking.EventId, booking.UserId,
+                Seats: 1, DateTime.UtcNow), stoppingToken);
 
             _logger.LogInformation(
                 "Booking {BookingId} for event {EventId} processed → {Status}",

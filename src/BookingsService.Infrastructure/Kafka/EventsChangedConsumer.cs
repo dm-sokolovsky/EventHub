@@ -43,7 +43,18 @@ public sealed class EventsChangedConsumer : BackgroundService
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                var result = _consumer.Consume(stoppingToken);
+                ConsumeResult<string, string>? result;
+                try
+                {
+                    result = _consumer.Consume(stoppingToken);
+                }
+                catch (ConsumeException ex)
+                {
+                    // Ошибка брокера/топика не должна останавливать сервис
+                    _logger.LogError(ex, "Consume error in topic {Topic}, retrying", Topics.EventsChanged);
+                    continue;
+                }
+
                 if (result?.Message?.Value is null)
                     continue;
 

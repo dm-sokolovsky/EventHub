@@ -11,7 +11,7 @@ namespace BookingsService.Infrastructure.Kafka;
 /// Создаёт топики при старте, если их ещё нет.
 /// Не валит запуск приложения при ошибке — подписчики попробуют позже.
 /// </summary>
-public sealed class KafkaTopicInitializer : BackgroundService
+public sealed class KafkaTopicInitializer : IHostedService
 {
     private static readonly string[] RequiredTopics =
     [
@@ -30,26 +30,18 @@ public sealed class KafkaTopicInitializer : BackgroundService
         _logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            using var admin = new AdminClientBuilder(
-                new AdminClientConfig
-                {
-                    BootstrapServers = _configuration["Kafka:BootstrapServers"]
-                }).Build();
-
-            var metadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
-
-            foreach (var topic in RequiredTopics)
+        using var admin = new AdminClientBuilder(
+            new AdminClientConfig
             {
-                if (metadata.Topics.Any(t => t.Topic == topic))
-                {
-                    _logger.LogInformation("Topic {Topic} already exists", topic);
-                    continue;
-                }
+                BootstrapServers = _configuration["Kafka:BootstrapServers"]
+            }).Build();
 
+        foreach (var topic in RequiredTopics)
+        {
+            try
+            {
                 await admin.CreateTopicsAsync(new[]
                 {
                     new TopicSpecification
@@ -62,10 +54,17 @@ public sealed class KafkaTopicInitializer : BackgroundService
 
                 _logger.LogInformation("Created topic: {Topic}", topic);
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating Kafka topics");
+            catch (CreateTopicsException ex) when (ex.Results.All(r => r.Error.Code == ErrorCode.TopicAlreadyExists))
+            {
+                // Другой сервис уже создал топик — нормальная ситуация при параллельном старте
+                _logger.LogInformation("Topic {Topic} already exists", topic);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating Kafka topic {Topic}", topic);
+            }
         }
     }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

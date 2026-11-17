@@ -1,3 +1,4 @@
+using EventHub.Contracts;
 using EventsService.Application.Contracts;
 using EventsService.Application.Repositories;
 using EventsService.Application.Services.Abstractions;
@@ -6,13 +7,18 @@ using EventsService.Domain.Models;
 
 namespace EventsService.Application.Services;
 
-public sealed class EventService(IEventRepository eventRepository) : IEventService
+public sealed class EventService(
+    IEventRepository eventRepository,
+    IEventPublisher eventPublisher
+        ) : IEventService
 {
     public async Task<EventInfo> CreateEventAsync(CreateEvent request, CancellationToken cancellationToken = default)
     {
         var @event = Event.Create(request.Title, request.StartAt, request.EndAt, request.TotalSeats, request.Description);
 
         await eventRepository.AddAsync(@event, cancellationToken);
+
+        await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Created), cancellationToken);
 
         return ToInfo(@event);
     }
@@ -50,13 +56,33 @@ public sealed class EventService(IEventRepository eventRepository) : IEventServi
 
         await eventRepository.SaveChangesAsync(cancellationToken);
 
+        await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Updated), cancellationToken);
+
         return ToInfo(@event);
     }
 
     public async Task<bool> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await eventRepository.DeleteByIdAsync(id, cancellationToken);
+        var @event = await eventRepository.GetByIdAsync(id, cancellationToken);
+        if (@event is null)
+            return false;
+
+        var deleted = await eventRepository.DeleteByIdAsync(id, cancellationToken);
+
+        if (deleted)
+            await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Deleted), cancellationToken);
+
+        return deleted;
     }
+
+    private static EventChanged ToChanged(Event @event, EventChangeType changeType) => new(
+        @event.Id,
+        @event.Title,
+        @event.StartAt,
+        @event.EndAt,
+        @event.TotalSeats,
+        @event.AvailableSeats,
+        changeType);
 
     private static EventInfo ToInfo(Event @event) => new()
     {

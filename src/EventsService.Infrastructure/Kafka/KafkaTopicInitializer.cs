@@ -9,6 +9,12 @@ namespace EventsService.Infrastructure;
 
 public sealed class KafkaTopicInitializer : BackgroundService
 {
+    private static readonly string[] RequiredTopics =
+    [
+        Topics.BookingConfirmed,
+        Topics.EventsChanged
+    ];
+
     private readonly IConfiguration _configuration;
     private readonly ILogger<KafkaTopicInitializer> _logger;
 
@@ -20,8 +26,8 @@ public sealed class KafkaTopicInitializer : BackgroundService
         _configuration = configuration;
         _logger = logger;
     }
-    
-    
+
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
@@ -31,29 +37,33 @@ public sealed class KafkaTopicInitializer : BackgroundService
                 {
                     BootstrapServers = _configuration["Kafka:BootstrapServers"]
                 }).Build();
-            
+
             var metadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
-            if (metadata.Topics.Any(t => t.Topic == Topics.BookingConfirmed))
-            {
-                _logger.LogInformation("Topic {Topic} already exists", Topics.BookingConfirmed);
-                return;
-            }
 
-            await admin.CreateTopicsAsync(new[]
+            foreach (var topic in RequiredTopics)
             {
-                new TopicSpecification
+                if (metadata.Topics.Any(t => t.Topic == topic))
                 {
-                    Name = Topics.BookingConfirmed,
-                    NumPartitions = 3,
-                    ReplicationFactor = 1,
+                    _logger.LogInformation("Topic {Topic} already exists", topic);
+                    continue;
                 }
-            });
 
-            _logger.LogInformation("Created topic: {Topic}", Topics.BookingConfirmed);
+                await admin.CreateTopicsAsync(new[]
+                {
+                    new TopicSpecification
+                    {
+                        Name = topic,
+                        NumPartitions = 3,
+                        ReplicationFactor = 1,
+                    }
+                });
+
+                _logger.LogInformation("Created topic: {Topic}", topic);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating topic");
+            _logger.LogError(ex, "Error creating Kafka topics");
         }
     }
 }

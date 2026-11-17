@@ -58,6 +58,39 @@ namespace BookingsService.Infrastructure.Migrations
 
                     b.ToTable("cd_bookings", (string)null);
                 });
+
+            modelBuilder.Entity("BookingsService.Infrastructure.Models.LocalEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AvailableSeats")
+                        .HasColumnType("integer")
+                        .HasColumnName("available_seats");
+
+                    b.Property<DateTime>("EndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_at");
+
+                    b.Property<DateTime>("StartAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("TotalSeats")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_seats");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("cd_local_events", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

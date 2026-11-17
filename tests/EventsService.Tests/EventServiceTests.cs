@@ -1,3 +1,4 @@
+using EventsService.Application;
 using EventsService.Application.Contracts;
 using EventsService.Application.Repositories;
 using EventsService.Application.Services;
@@ -15,6 +16,7 @@ public sealed class EventServiceTests : IDisposable
     private readonly ServiceProvider _serviceProvider;
     private readonly IServiceScope _scope;
     private readonly IEventService _eventService;
+    private readonly FakeEventPublisher _eventPublisher;
 
     public EventServiceTests()
     {
@@ -23,11 +25,13 @@ public sealed class EventServiceTests : IDisposable
         services.AddDbContext<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
         services.AddScoped<IEventRepository, EventRepository>();
+        services.AddSingleton<IEventPublisher, FakeEventPublisher>();
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();
         _scope = _serviceProvider.CreateScope();
         _eventService = _scope.ServiceProvider.GetRequiredService<IEventService>();
+        _eventPublisher = (FakeEventPublisher)_serviceProvider.GetRequiredService<IEventPublisher>();
     }
 
     public void Dispose()

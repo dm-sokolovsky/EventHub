@@ -130,6 +130,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=bookings-db;Port=5432;Database=bookings;Username=postgres;Password=postgres
       Kafka__BootstrapServers: kafka:29092
+      Kafka__ConsumerGroup: bookings-service
     ports:
       - "5003:8080"
     depends_on:

@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using BookingsService.Domain.Models;
+using BookingsService.Infrastructure.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingsService.Infrastructure;
 
@@ -9,6 +10,7 @@ public sealed class AppDbContext : DbContext
         base(options) { }
 
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<LocalEvent> LocalEvents => Set<LocalEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -9,6 +9,7 @@ using BookingsService.Application.Services;
 using BookingsService.Application.Services.Abstractions;
 using BookingsService.Infrastructure;
 using BookingsService.Infrastructure.Gateways;
+using BookingsService.Infrastructure.Kafka;
 using BookingsService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -53,18 +54,21 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+// Локальная копия событий EventsService + Kafka.
+// Фабрика — singleton (шлюз и консьюмер), контекст — scoped (репозитории);
+// optionsLifetime: Singleton, чтобы фабрика не тянула scoped-зависимость
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<AppDbContext>(options => { },
+    optionsLifetime: ServiceLifetime.Singleton);
 
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 
-// Заглушка EventsService: в памяти процесса, пока нет интеграции (Kafka)
-builder.Services.AddSingleton<InMemoryEventsGateway>();
-builder.Services.AddSingleton<IEventsGateway>(sp => sp.GetRequiredService<InMemoryEventsGateway>());
-
-// Kafka
+builder.Services.AddSingleton<IEventsGateway, LocalEventsGateway>();
 builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
+builder.Services.AddHostedService<KafkaTopicInitializer>();
+builder.Services.AddHostedService<EventsChangedConsumer>();
 
 builder.Services.AddHostedService<BookingProcessingBackgroundService>();
 
@@ -77,18 +81,6 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 var app = builder.Build();
-
-// Сидирование заглушки событий из конфигурации (только если задана секция EventsStub)
-var stubEvents = builder.Configuration.GetSection("EventsStub:Events")
-    .Get<List<StubEventEntry>>();
-if (stubEvents is { Count: > 0 })
-{
-    var gateway = app.Services.GetRequiredService<InMemoryEventsGateway>();
-    foreach (var stubEvent in stubEvents)
-    {
-        gateway.AddEvent(stubEvent.Id, stubEvent.StartAt, stubEvent.TotalSeats);
-    }
-}
 
 using (var scope = app.Services.CreateScope())
 {
@@ -114,10 +106,3 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 app.MapBookingEndpoints();
 
 app.Run();
-
-internal sealed class StubEventEntry
-{
-    public Guid Id { get; init; }
-    public DateTime StartAt { get; init; }
-    public int TotalSeats { get; init; }
-}

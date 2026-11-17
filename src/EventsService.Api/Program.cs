@@ -1,10 +1,12 @@
 using EventsService.Api.Common.Middlewares;
 using EventsService.Api.Endpoints;
 using EventsService.Api.Extensions;
+using EventsService.Application;
 using EventsService.Application.Repositories;
 using EventsService.Application.Services;
 using EventsService.Application.Services.Abstractions;
 using EventsService.Infrastructure;
+using EventsService.Infrastructure.Kafka;
 using EventsService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -61,7 +63,8 @@ builder.Services.AddProblemDetails();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
 // Kafka
-builder.Services.AddHostedService<KafkaTopicInitializer>();               
+builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
+builder.Services.AddHostedService<KafkaTopicInitializer>();
 builder.Services.AddHostedService<BookingConfirmedConsumer>();  
 
 var app = builder.Build();

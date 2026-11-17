@@ -6,6 +6,7 @@ using BookingsService.Domain.Exceptions;
 using BookingsService.Domain.Models;
 using BookingsService.Infrastructure;
 using BookingsService.Infrastructure.Gateways;
+using BookingsService.Infrastructure.Models;
 using BookingsService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,7 @@ public sealed class BookingServiceTests : IDisposable
     private readonly ServiceProvider _serviceProvider;
     private readonly IServiceScope _scope;
     private readonly IBookingService _bookingService;
-    private readonly InMemoryEventsGateway _eventsGateway;
+    private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
     private readonly FakeCurrentUser _currentUser;
 
     private static readonly Guid TestEventId = Guid.NewGuid();
@@ -26,10 +27,9 @@ public sealed class BookingServiceTests : IDisposable
     {
         var dbName = Guid.NewGuid().ToString();
         var services = new ServiceCollection();
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddDbContextFactory<AppDbContext>(options =>
             options.UseInMemoryDatabase(dbName));
-        services.AddSingleton<InMemoryEventsGateway>();
-        services.AddSingleton<IEventsGateway>(sp => sp.GetRequiredService<InMemoryEventsGateway>());
+        services.AddSingleton<IEventsGateway, LocalEventsGateway>();
         services.AddSingleton<ICurrentUser, FakeCurrentUser>();
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<IBookingService, BookingService>();
@@ -37,10 +37,25 @@ public sealed class BookingServiceTests : IDisposable
         _serviceProvider = services.BuildServiceProvider();
         _scope = _serviceProvider.CreateScope();
         _bookingService = _scope.ServiceProvider.GetRequiredService<IBookingService>();
-        _eventsGateway = _serviceProvider.GetRequiredService<InMemoryEventsGateway>();
+        _dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
         _currentUser = (FakeCurrentUser)_serviceProvider.GetRequiredService<ICurrentUser>();
 
-        _eventsGateway.AddEvent(TestEventId, DateTime.UtcNow.AddDays(1), totalSeats: 10);
+        AddLocalEvent(TestEventId, DateTime.UtcNow.AddDays(1), totalSeats: 10);
+    }
+
+    private void AddLocalEvent(Guid eventId, DateTime startAt, int totalSeats)
+    {
+        using var db = _dbContextFactory.CreateDbContext();
+        db.LocalEvents.Add(new LocalEvent
+        {
+            Id = eventId,
+            Title = "Test event",
+            StartAt = startAt,
+            EndAt = startAt.AddHours(2),
+            TotalSeats = totalSeats,
+            AvailableSeats = totalSeats
+        });
+        db.SaveChanges();
     }
 
     public void Dispose()
@@ -75,7 +90,7 @@ public sealed class BookingServiceTests : IDisposable
     public async Task CreateBookingAsync_WithAlreadyStartedEvent_ThrowsEventAlreadyStartedException()
     {
         var startedEventId = Guid.NewGuid();
-        _eventsGateway.AddEvent(startedEventId, DateTime.UtcNow.AddHours(-1), totalSeats: 10);
+        AddLocalEvent(startedEventId, DateTime.UtcNow.AddHours(-1), totalSeats: 10);
 
         await Assert.ThrowsAsync<EventAlreadyStartedException>(() =>
             _bookingService.CreateBookingAsync(startedEventId, Guid.NewGuid()));
@@ -85,7 +100,7 @@ public sealed class BookingServiceTests : IDisposable
     public async Task CreateBookingAsync_WithoutAvailableSeats_ThrowsNoAvailableSeatsException()
     {
         var smallEventId = Guid.NewGuid();
-        _eventsGateway.AddEvent(smallEventId, DateTime.UtcNow.AddDays(1), totalSeats: 1);
+        AddLocalEvent(smallEventId, DateTime.UtcNow.AddDays(1), totalSeats: 1);
 
         await _bookingService.CreateBookingAsync(smallEventId, Guid.NewGuid());
 
@@ -101,12 +116,12 @@ public sealed class BookingServiceTests : IDisposable
         for (var i = 0; i < BookingRules.MaxActiveBookingsPerUser; i++)
         {
             var eventId = Guid.NewGuid();
-            _eventsGateway.AddEvent(eventId, DateTime.UtcNow.AddDays(1), totalSeats: 100);
+            AddLocalEvent(eventId, DateTime.UtcNow.AddDays(1), totalSeats: 100);
             await _bookingService.CreateBookingAsync(eventId, userId);
         }
 
         var oneMoreEventId = Guid.NewGuid();
-        _eventsGateway.AddEvent(oneMoreEventId, DateTime.UtcNow.AddDays(1), totalSeats: 100);
+        AddLocalEvent(oneMoreEventId, DateTime.UtcNow.AddDays(1), totalSeats: 100);
 
         await Assert.ThrowsAsync<BookingLimitExceededException>(() =>
             _bookingService.CreateBookingAsync(oneMoreEventId, userId));

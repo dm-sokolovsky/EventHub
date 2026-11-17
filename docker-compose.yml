@@ -93,6 +93,7 @@ services:
       retries: 12
 
   users-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: src/UsersService.Api/Dockerfile
@@ -106,6 +107,7 @@ services:
         condition: service_healthy
 
   events-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: src/EventsService.Api/Dockerfile
@@ -123,6 +125,7 @@ services:
         condition: service_healthy
 
   bookings-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: src/BookingsService.Api/Dockerfile

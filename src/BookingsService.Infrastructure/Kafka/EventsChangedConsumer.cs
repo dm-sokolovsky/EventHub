@@ -112,14 +112,13 @@ public sealed class EventsChangedConsumer : BackgroundService
         }
         else
         {
-            // Сохраняем локально занятые места: новое AvailableSeats = присланное + уже зарезервированное
-            var reserved = localEvent.TotalSeats - localEvent.AvailableSeats;
+            var totalSeatsDelta = message.TotalSeats - localEvent.TotalSeats;
 
             localEvent.Title = message.Title;
             localEvent.StartAt = message.StartAt;
             localEvent.EndAt = message.EndAt;
             localEvent.TotalSeats = message.TotalSeats;
-            localEvent.AvailableSeats = Math.Min(message.TotalSeats, message.AvailableSeats + reserved);
+            localEvent.AvailableSeats = Math.Clamp(localEvent.AvailableSeats + totalSeatsDelta, 0, message.TotalSeats);
         }
 
         await db.SaveChangesAsync(stoppingToken);

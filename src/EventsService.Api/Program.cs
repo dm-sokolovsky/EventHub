@@ -60,6 +60,10 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
+// Kafka
+builder.Services.AddHostedService<KafkaTopicInitializer>();               
+builder.Services.AddHostedService<BookingConfirmedConsumer>();  
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())

@@ -1,4 +1,5 @@
 using BookingsService.Application;
+using BookingsService.Application.Exceptions;
 using BookingsService.Application.Repositories;
 using BookingsService.Application.Services.Abstractions;
 using BookingsService.Domain.Models;
@@ -111,6 +112,12 @@ public class BookingProcessingBackgroundService : BackgroundService
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
+        }
+        catch (EventPublishingException ex)
+        {
+            _logger.LogWarning(ex,                                                
+                "Kafka unavailable, booking {BookingId} stays pending for retry", 
+                bookingId);   
         }
         catch (Exception ex)
         {

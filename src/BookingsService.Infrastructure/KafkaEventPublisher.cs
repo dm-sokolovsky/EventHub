@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BookingsService.Application;
+using BookingsService.Application.Exceptions;
 using Confluent.Kafka;
 using EventHub.Contracts;
 using Microsoft.Extensions.Configuration;
@@ -24,14 +25,23 @@ public sealed class KafkaEventPublisher : IEventPublisher, IDisposable
     public async Task PublishAsync(BookingConfirmed message, CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(message);
-        await _producer.ProduceAsync(
-            Topics.BookingConfirmed,
-            new Message<string, string>
-            {
-                Key = message.EventId.ToString(),
-                Value = json
-            }, cancellationToken
-        );
+        try
+        {
+            await _producer.ProduceAsync(
+                Topics.BookingConfirmed,
+                new Message<string, string>
+                {
+                    Key = message.EventId.ToString(),
+                    Value = json
+                }, cancellationToken
+            );
+        }
+        catch (KafkaException ex)
+        {
+            throw new EventPublishingException(                               
+                $"Failed to publish booking {message.BookingId} to Kafka",    
+                ex);             
+        }
     }
 
     public void Dispose()

@@ -9,8 +9,9 @@ public sealed class CacheService(IConnectionMultiplexer redis) : ICacheService
 {
     private readonly IDatabase _redis = redis.GetDatabase();
     
-    public async Task<Event?> GetByKeyAsync(string key)
+    public async Task<Event?> GetByKeyAsync(string id)
     {
+        var key = $"event:{id}";
         var cached = await _redis.StringGetAsync(key);
         
         if (!cached.HasValue)
@@ -27,8 +28,9 @@ public sealed class CacheService(IConnectionMultiplexer redis) : ICacheService
         return await _redis.StringSetAsync(key, json, expiration);
     }
 
-    public async Task RemoveAsync(string key)
+    public async Task RemoveAsync(string id)
     {
+        var key = $"event:{id}";
         await _redis.KeyDeleteAsync(key);
     }
 }

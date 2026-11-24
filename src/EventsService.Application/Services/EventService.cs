@@ -9,7 +9,8 @@ namespace EventsService.Application.Services;
 
 public sealed class EventService(
     IEventRepository eventRepository,
-    IEventPublisher eventPublisher
+    IEventPublisher eventPublisher,
+    ICacheService cacheService
         ) : IEventService
 {
     public async Task<EventInfo> CreateEventAsync(CreateEvent request, CancellationToken cancellationToken = default)
@@ -25,8 +26,18 @@ public sealed class EventService(
 
     public async Task<EventInfo> GetEventByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var @event = await eventRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Event not found");
 
+        var cacheKey = $"event:{id}";
+        
+        var cached = await cacheService.GetByKeyAsync(cacheKey);
+        
+        if (cached is not null)
+            return ToInfo(cached);
+        
+        var @event = await eventRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Event not found");
+        
+        await cacheService.SetAsync(cacheKey, @event, TimeSpan.FromMinutes(5));
+        
         return ToInfo(@event);
     }
 

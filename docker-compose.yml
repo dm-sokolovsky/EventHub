@@ -40,6 +40,15 @@ services:
       interval: 10s
       timeout: 10s
       retries: 15
+      
+  redis:
+    image: redis:7.2-alpine
+    container_name: eventapi-redis
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   
   users-db:
     image: postgres:16-alpine
@@ -122,6 +131,8 @@ services:
       events-db:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   bookings-service:

@@ -29,7 +29,7 @@ public sealed class EventService(
 
         var cacheKey = CacheKey(id);
         
-        var cached = await cacheService.GetByKeyAsync(cacheKey);
+        var cached = await cacheService.GetAsync<EventInfo>(cacheKey);
         
         if (cached is not null)
             return cached;
@@ -93,7 +93,27 @@ public sealed class EventService(
         return deleted;
     }
 
+    public async Task<List<EventInfo>?> GetTopEventsCachedAsync(CancellationToken cancellationToken = default)
+    {
+        var cacheKey = CacheKey("top10");
+
+        var cached = await cacheService.GetAsync<List<EventInfo>>(cacheKey);
+
+        if (cached is not null)
+            return cached;
+
+        var (items, _) = await eventRepository.GetAllEventsAsync(new EventFilter(null, null, null), page: 1, pageSize: 10, cancellationToken);
+
+        var top = items.Select(ToInfo).ToList();
+
+        await cacheService.SetAsync(cacheKey, top, TimeSpan.FromMinutes(5));
+
+        return top;
+    }
+
+
     private static string CacheKey(Guid id) => $"event:{id}";
+    private static string CacheKey(string key) => $"event:{key}";
 
     private static EventChanged ToChanged(Event @event, EventChangeType changeType) => new(
         @event.Id,

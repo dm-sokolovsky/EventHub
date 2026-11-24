@@ -1,5 +1,4 @@
 using System.Text.Json;
-using EventsService.Application.Contracts;
 using EventsService.Application.Services.Abstractions;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -11,25 +10,25 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
     private readonly IDatabase _redis = redis.GetDatabase();
     private readonly ILogger<CacheService> _logger = logger;
 
-    public async Task<EventInfo?> GetByKeyAsync(string key)
+    public async Task<T?> GetAsync<T>(string key)
     {
         try
         {
             var cached = await _redis.StringGetAsync(key);
 
             if (cached.IsNullOrEmpty)
-                return null;
+                return default;
 
-            return JsonSerializer.Deserialize<EventInfo>(cached.ToString());
+            return JsonSerializer.Deserialize<T>(cached.ToString());
         }
         catch (RedisException ex)
         {
             _logger.LogWarning(ex, "Redis is unavailable, read key {key} was skipped", key);
-            return null;
+            return default;
         }
     }
 
-    public async Task<bool> SetAsync(string key, EventInfo value, TimeSpan expiration)
+    public async Task<bool> SetAsync<T>(string key, T value, TimeSpan expiration)
     {
         try
         {

@@ -27,18 +27,20 @@ public sealed class EventService(
     public async Task<EventInfo> GetEventByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
 
-        var cacheKey = $"event:{id}";
+        var cacheKey = CacheKey(id);
         
         var cached = await cacheService.GetByKeyAsync(cacheKey);
         
         if (cached is not null)
-            return ToInfo(cached);
+            return cached;
         
         var @event = await eventRepository.GetByIdAsync(id, cancellationToken) ?? throw new NotFoundException("Event not found");
         
-        await cacheService.SetAsync(cacheKey, @event, TimeSpan.FromMinutes(5));
-        
-        return ToInfo(@event);
+        var info = ToInfo(@event);
+
+        await cacheService.SetAsync(cacheKey, info, TimeSpan.FromMinutes(5));
+
+        return info;
     }
 
     public async Task<PaginatedResult<EventInfo>> GetAllEventsAsync(
@@ -67,6 +69,8 @@ public sealed class EventService(
 
         await eventRepository.SaveChangesAsync(cancellationToken);
 
+        await cacheService.RemoveAsync(CacheKey(id));
+
         await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Updated), cancellationToken);
 
         return ToInfo(@event);
@@ -81,10 +85,15 @@ public sealed class EventService(
         var deleted = await eventRepository.DeleteByIdAsync(id, cancellationToken);
 
         if (deleted)
+        {
+            await cacheService.RemoveAsync(CacheKey(id));
             await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Deleted), cancellationToken);
+        }
 
         return deleted;
     }
+
+    private static string CacheKey(Guid id) => $"event:{id}";
 
     private static EventChanged ToChanged(Event @event, EventChangeType changeType) => new(
         @event.Id,

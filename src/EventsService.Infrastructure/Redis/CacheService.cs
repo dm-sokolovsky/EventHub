@@ -1,6 +1,6 @@
 using System.Text.Json;
+using EventsService.Application.Contracts;
 using EventsService.Application.Services.Abstractions;
-using EventsService.Domain.Models;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -10,10 +10,9 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
 {
     private readonly IDatabase _redis = redis.GetDatabase();
     private readonly ILogger<CacheService> _logger = logger;
-    
-    public async Task<Event?> GetByKeyAsync(string key)
-    {
 
+    public async Task<EventInfo?> GetByKeyAsync(string key)
+    {
         try
         {
             var cached = await _redis.StringGetAsync(key);
@@ -21,16 +20,16 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
             if (cached.IsNullOrEmpty)
                 return null;
 
-            return JsonSerializer.Deserialize<Event>(cached.ToString()) ?? null;
+            return JsonSerializer.Deserialize<EventInfo>(cached.ToString());
         }
         catch (RedisException ex)
         {
-            _logger.LogWarning(ex, "Redis is connected, read key {key} was skipped", key);
+            _logger.LogWarning(ex, "Redis is unavailable, read key {key} was skipped", key);
             return null;
         }
     }
 
-    public async Task<bool> SetAsync(string key, Event value,  TimeSpan expiration)
+    public async Task<bool> SetAsync(string key, EventInfo value, TimeSpan expiration)
     {
         try
         {
@@ -40,13 +39,20 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
         }
         catch (RedisException ex)
         {
-            _logger.LogWarning(ex, "Redis is connected, write key {key} not cached", key);
+            _logger.LogWarning(ex, "Redis is unavailable, key {key} was not cached", key);
+            return false;
         }
-        return false;
     }
 
     public async Task RemoveAsync(string key)
     {
-        await _redis.KeyDeleteAsync(key);
+        try
+        {
+            await _redis.KeyDeleteAsync(key);
+        }
+        catch (RedisException ex)
+        {
+            _logger.LogWarning(ex, "Redis is unavailable, key {key} was not invalidated", key);
+        }
     }
 }

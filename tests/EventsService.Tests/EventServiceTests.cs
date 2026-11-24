@@ -26,6 +26,7 @@ public sealed class EventServiceTests : IDisposable
             options.UseInMemoryDatabase(dbName));
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddSingleton<IEventPublisher, FakeEventPublisher>();
+        services.AddSingleton<ICacheService, FakeCacheService>();
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();

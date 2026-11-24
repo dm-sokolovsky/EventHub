@@ -64,6 +64,16 @@ internal static class EventEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError)
         .RequireAuthorization("AdminOnly");
 
+        group.MapGet("/top", async (IEventService eventService) =>
+            {
+                var top = await eventService.GetTopEventsCachedAsync();
+                
+                return Results.Ok(top);
+            })
+            .WithName("GetTopEvents")
+            .Produces<List<EventInfo>>(StatusCodes.Status200OK)
+            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
         return app;
     }
 }

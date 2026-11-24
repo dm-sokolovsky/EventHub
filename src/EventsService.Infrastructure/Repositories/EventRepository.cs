@@ -57,4 +57,13 @@ public class EventRepository(AppDbContext appDbContext) : IEventRepository
     {
         await appDbContext.SaveChangesAsync(ct);
     }
+    
+    public async Task<IReadOnlyList<Event>> GetTopEventsAsync(int count, CancellationToken ct = default)
+    {
+        return await  appDbContext.Events
+            .AsNoTracking()
+            .OrderByDescending(e => (double)(e.TotalSeats - e.AvailableSeats) / e.TotalSeats)
+            .Take(count)
+            .ToListAsync(ct);
+    }
 }

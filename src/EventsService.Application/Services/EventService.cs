@@ -102,13 +102,11 @@ public sealed class EventService(
         if (cached is not null)
             return cached;
 
-        var (items, _) = await eventRepository.GetAllEventsAsync(new EventFilter(null, null, null), page: 1, pageSize: 10, cancellationToken);
-
-        var top = items.Select(ToInfo).ToList();
+        var top = await eventRepository.GetTopEventsAsync(10, cancellationToken);
 
         await cacheService.SetAsync(cacheKey, top, TimeSpan.FromMinutes(5));
 
-        return top;
+        return top.Select(x => ToInfo(x)).ToList();
     }
 
 

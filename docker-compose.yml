@@ -44,6 +44,9 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: eventapi-redis
+    ports:
+      # Для локального запуска сервиса с хоста (dotnet run).
+      - "6379:6379"
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
@@ -125,6 +128,7 @@ services:
       ConnectionStrings__DefaultConnection: Host=events-db;Port=5432;Database=events;Username=postgres;Password=postgres
       Kafka__BootstrapServers: kafka:29092
       Kafka__ConsumerGroup: events-service
+      Redis__ConnectionString: redis:6379
     ports:
       - "5002:8080"
     depends_on:

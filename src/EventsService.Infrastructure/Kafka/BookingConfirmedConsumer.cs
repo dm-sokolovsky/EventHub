@@ -2,6 +2,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using EventHub.Contracts;
 using EventsService.Application.Repositories;
+using EventsService.Application.Services.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -90,6 +91,7 @@ public sealed class BookingConfirmedConsumer : BackgroundService
         
         await using var scope = _scopeFactory.CreateAsyncScope();
         var repo = scope.ServiceProvider.GetRequiredService<IEventRepository>();
+        var cache =  scope.ServiceProvider.GetRequiredService<ICacheService>();
         
         var @event = await repo.GetByIdAsync(message.EventId, stoppingToken);
         if (@event is null)
@@ -105,6 +107,8 @@ public sealed class BookingConfirmedConsumer : BackgroundService
         }
 
         await repo.SaveChangesAsync(stoppingToken);
+        await cache.RemoveAsync(CacheKeys.Event(message.EventId));
+        await cache.RemoveAsync(CacheKeys.Top10);
         _logger.LogInformation($"Event {message.EventId}: reserved {message.Seats} for booking {message.BookingId}");
     }
 }

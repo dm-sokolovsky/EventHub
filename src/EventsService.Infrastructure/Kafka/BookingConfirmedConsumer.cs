@@ -1,8 +1,7 @@
 using System.Text.Json;
 using Confluent.Kafka;
 using EventHub.Contracts;
-using EventsService.Application.Repositories;
-using EventsService.Application.Services.Abstractions;
+using EventsService.Application.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -90,25 +89,20 @@ public sealed class BookingConfirmedConsumer : BackgroundService
         }
         
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var repo = scope.ServiceProvider.GetRequiredService<IEventRepository>();
-        var cache =  scope.ServiceProvider.GetRequiredService<ICacheService>();
-        
-        var @event = await repo.GetByIdAsync(message.EventId, stoppingToken);
-        if (@event is null)
-        {
-            _logger.LogWarning($"Event {message.EventId} not found, message skipped"); 
-            return;
-        }
+        var handler = scope.ServiceProvider.GetRequiredService<BookingConfirmedHandler>();
 
-        if (!@event.TryReserveSeats(message.Seats))
+        var result = await handler.HandleAsync(message, stoppingToken);
+        switch (result)
         {
-            _logger.LogWarning($"Event {message.EventId} is reserved, skipping");
-            return;
+            case BookingConfirmedResult.EventNotFound:
+                _logger.LogWarning($"Event {message.EventId} not found, message skipped");
+                break;
+            case BookingConfirmedResult.SeatsUnavailable:
+                _logger.LogWarning($"Event {message.EventId} is reserved, skipping");
+                break;
+            case BookingConfirmedResult.Reserved:
+                _logger.LogInformation($"Event {message.EventId}: reserved {message.Seats} for booking {message.BookingId}");
+                break;
         }
-
-        await repo.SaveChangesAsync(stoppingToken);
-        await cache.RemoveAsync(CacheKeys.Event(message.EventId));
-        await cache.RemoveAsync(CacheKeys.Top10);
-        _logger.LogInformation($"Event {message.EventId}: reserved {message.Seats} for booking {message.BookingId}");
     }
 }

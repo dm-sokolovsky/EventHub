@@ -10,6 +10,7 @@ public sealed class FakeEventRepository : IEventRepository
 
     public int GetByIdCallCount { get; private set; }
     public int GetTopCallCount { get; private set; }
+    public int SaveChangesCallCount { get; private set; }
 
     public void Seed(Event @event) => _events[@event.Id] = @event;
 
@@ -38,7 +39,11 @@ public sealed class FakeEventRepository : IEventRepository
     public Task<bool> DeleteByIdAsync(Guid id, CancellationToken ct = default) =>
         Task.FromResult(_events.Remove(id));
 
-    public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
+    public Task SaveChangesAsync(CancellationToken ct = default)
+    {
+        SaveChangesCallCount++;
+        return Task.CompletedTask;
+    }
 
     public Task<IReadOnlyList<Event>> GetTopEventsAsync(int count, CancellationToken ct = default)
     {

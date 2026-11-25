@@ -70,6 +70,7 @@ public sealed class EventService(
         await eventRepository.SaveChangesAsync(cancellationToken);
 
         await cacheService.RemoveAsync(CacheKeys.Event(id));
+        await cacheService.RemoveAsync(CacheKeys.Top10);
 
         await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Updated), cancellationToken);
 
@@ -87,6 +88,7 @@ public sealed class EventService(
         if (deleted)
         {
             await cacheService.RemoveAsync(CacheKeys.Event(id));
+            await cacheService.RemoveAsync(CacheKeys.Top10);
             await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Deleted), cancellationToken);
         }
 

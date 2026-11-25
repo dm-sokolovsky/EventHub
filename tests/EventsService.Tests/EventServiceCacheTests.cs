@@ -96,8 +96,10 @@ public sealed class EventServiceCacheTests
     {
         var @event = CreateEvent();
         _repository.Seed(@event);
-        await _sut.GetEventByIdAsync(@event.Id); // прогрев кэша
+        await _sut.GetEventByIdAsync(@event.Id); // прогрев кэша события
+        await _sut.GetTopEventsCachedAsync(); // прогрев кэша топ-10
         Assert.NotNull(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
+        Assert.NotNull(await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10));
 
         var request = new EventUpsert(
             "Новое название",
@@ -108,6 +110,7 @@ public sealed class EventServiceCacheTests
         await _sut.UpdateEventAsync(@event.Id, request);
 
         Assert.Null(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
+        Assert.Null(await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10));
 
         // Следующее чтение идёт в репозиторий и возвращает свежие данные, а не устаревшие из кэша.
         var fresh = await _sut.GetEventByIdAsync(@event.Id);
@@ -119,12 +122,14 @@ public sealed class EventServiceCacheTests
     {
         var @event = CreateEvent();
         _repository.Seed(@event);
-        await _sut.GetEventByIdAsync(@event.Id); // прогрев кэша
+        await _sut.GetEventByIdAsync(@event.Id); // прогрев кэша события
+        await _sut.GetTopEventsCachedAsync(); // прогрев кэша топ-10
 
         var deleted = await _sut.DeleteEventAsync(@event.Id);
 
         Assert.True(deleted);
         Assert.Null(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
+        Assert.Null(await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10));
     }
 
     #endregion

@@ -65,7 +65,7 @@ BookingsService не ходит в базу EventsService напрямую — �
 
 - `GET /api/events/{id}` и `GET /api/events/top` сначала смотрят в кэш; при промахе данные читаются из PostgreSQL и записываются в кэш с TTL 5 минут;
 - ключи: `event:{id}` для события, `event:top10` для топ-10 (сортировка по доле проданных мест: `(total_seats - available_seats) / total_seats`, считается в SQL);
-- инвалидация: `PUT`/`DELETE` удаляют ключ события после сохранения в БД; `event:top10` явно не инвалидируется и живёт по TTL;
+- инвалидация: `PUT`/`DELETE` удаляют ключ события и `event:top10` после сохранения в БД; консьюмер `booking-confirmed` (`BookingConfirmedHandler`) после резервирования мест тоже удаляет оба ключа — изменение мест через Kafka сбрасывает кэш события, не дожидаясь TTL;
 - кэш — оптимизация, а не часть операции: сбои Redis внутри `CacheService` перехватываются (`RedisException` → warning в лог), запрос деградирует до чтения из БД, а не падает с 500;
 - в кэш пишется DTO `EventInfo`, а не доменная сущность (у `Event` приватные конструкторы — System.Text.Json её не десериализует).
 
@@ -193,7 +193,7 @@ dotnet ef migrations add <Name> --project src/BookingsService.Infrastructure --s
 dotnet test EventHub.slnx
 ```
 
-- `tests/*Service.Tests` — юнит-тесты сервисов и доменных моделей; зависимости подменяются hand-written заглушками (`FakeEventPublisher`, `FakeCacheService`, `FakeEventRepository` в EventsService.Tests, `LocalEventsGateway` в BookingServiceTests); кэширование EventsService покрыто сценариями hit/miss/инвалидация в `EventServiceCacheTests`. DI в `EventServiceTests` собирается вручную, поэтому новые зависимости конструкторов нужно регистрировать и там;
+- `tests/*Service.Tests` — юнит-тесты сервисов и доменных моделей; зависимости подменяются hand-written заглушками (`FakeEventPublisher`, `FakeCacheService`, `FakeEventRepository` в EventsService.Tests, `LocalEventsGateway` в BookingServiceTests); кэширование EventsService покрыто сценариями hit/miss/инвалидация в `EventServiceCacheTests`, сброс кэша при подтверждении брони — в `BookingConfirmedHandlerTests`. DI в `EventServiceTests` собирается вручную, поэтому новые зависимости конструкторов нужно регистрировать и там;
 - `tests/*Service.IntegrationTests` — тесты репозиториев и миграций на реальном PostgreSQL через Testcontainers (`postgres:16-alpine`); нужен только запущенный Docker.
 
 ## Структура репозитория

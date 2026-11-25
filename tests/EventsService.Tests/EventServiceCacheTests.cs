@@ -1,5 +1,6 @@
 using EventsService.Application.Contracts;
 using EventsService.Application.Services;
+using EventsService.Application.Services.Abstractions;
 using EventsService.Domain.Models;
 
 namespace EventsService.Tests;
@@ -7,7 +8,6 @@ namespace EventsService.Tests;
 public sealed class EventServiceCacheTests
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(5);
-    private const string TopCacheKey = "event:top10";
 
     private readonly FakeEventRepository _repository = new();
     private readonly FakeCacheService _cache = new();
@@ -25,7 +25,7 @@ public sealed class EventServiceCacheTests
     {
         var @event = CreateEvent();
         _repository.Seed(@event);
-        await _cache.SetAsync(CacheKey(@event.Id), ToInfo(@event, title: "Из кэша"), Ttl);
+        await _cache.SetAsync(CacheKeys.Event(@event.Id), ToInfo(@event, title: "Из кэша"), Ttl);
 
         var result = await _sut.GetEventByIdAsync(@event.Id);
 
@@ -44,7 +44,7 @@ public sealed class EventServiceCacheTests
         Assert.Equal(1, _repository.GetByIdCallCount);
         Assert.Equal(@event.Title, result.Title);
 
-        var cached = await _cache.GetAsync<EventInfo>(CacheKey(@event.Id));
+        var cached = await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id));
         Assert.NotNull(cached);
         Assert.Equal(@event.Title, cached.Title);
 
@@ -60,7 +60,7 @@ public sealed class EventServiceCacheTests
     [Fact]
     public async Task GetTopEventsCachedAsync_CacheHit_DoesNotCallRepository()
     {
-        await _cache.SetAsync(TopCacheKey, new List<EventInfo> { ToInfo(CreateEvent()) }, Ttl);
+        await _cache.SetAsync(CacheKeys.Top10, new List<EventInfo> { ToInfo(CreateEvent()) }, Ttl);
 
         var result = await _sut.GetTopEventsCachedAsync();
 
@@ -78,7 +78,7 @@ public sealed class EventServiceCacheTests
         Assert.Equal(1, _repository.GetTopCallCount);
         Assert.Single(result!);
 
-        var cached = await _cache.GetAsync<List<EventInfo>>(TopCacheKey);
+        var cached = await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10);
         Assert.NotNull(cached);
 
         // Повторное чтение обслуживается кэшем, репозиторий не дёргается.
@@ -97,7 +97,7 @@ public sealed class EventServiceCacheTests
         var @event = CreateEvent();
         _repository.Seed(@event);
         await _sut.GetEventByIdAsync(@event.Id); // прогрев кэша
-        Assert.NotNull(await _cache.GetAsync<EventInfo>(CacheKey(@event.Id)));
+        Assert.NotNull(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
 
         var request = new EventUpsert(
             "Новое название",
@@ -107,7 +107,7 @@ public sealed class EventServiceCacheTests
             100);
         await _sut.UpdateEventAsync(@event.Id, request);
 
-        Assert.Null(await _cache.GetAsync<EventInfo>(CacheKey(@event.Id)));
+        Assert.Null(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
 
         // Следующее чтение идёт в репозиторий и возвращает свежие данные, а не устаревшие из кэша.
         var fresh = await _sut.GetEventByIdAsync(@event.Id);
@@ -124,12 +124,10 @@ public sealed class EventServiceCacheTests
         var deleted = await _sut.DeleteEventAsync(@event.Id);
 
         Assert.True(deleted);
-        Assert.Null(await _cache.GetAsync<EventInfo>(CacheKey(@event.Id)));
+        Assert.Null(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
     }
 
     #endregion
-
-    private static string CacheKey(Guid id) => $"event:{id}";
 
     private static Event CreateEvent(string title = "Концерт") =>
         Event.Create(title, DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(2), 100, "Описание");

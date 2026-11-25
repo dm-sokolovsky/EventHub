@@ -27,7 +27,7 @@ public sealed class EventService(
     public async Task<EventInfo> GetEventByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
 
-        var cacheKey = CacheKey(id);
+        var cacheKey = CacheKeys.Event(id);
         
         var cached = await cacheService.GetAsync<EventInfo>(cacheKey);
         
@@ -69,7 +69,7 @@ public sealed class EventService(
 
         await eventRepository.SaveChangesAsync(cancellationToken);
 
-        await cacheService.RemoveAsync(CacheKey(id));
+        await cacheService.RemoveAsync(CacheKeys.Event(id));
 
         await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Updated), cancellationToken);
 
@@ -86,7 +86,7 @@ public sealed class EventService(
 
         if (deleted)
         {
-            await cacheService.RemoveAsync(CacheKey(id));
+            await cacheService.RemoveAsync(CacheKeys.Event(id));
             await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Deleted), cancellationToken);
         }
 
@@ -95,7 +95,7 @@ public sealed class EventService(
 
     public async Task<List<EventInfo>?> GetTopEventsCachedAsync(CancellationToken cancellationToken = default)
     {
-        var cacheKey = CacheKey("top10");
+        var cacheKey = CacheKeys.Top10;
 
         var cached = await cacheService.GetAsync<List<EventInfo>>(cacheKey);
 
@@ -110,10 +110,6 @@ public sealed class EventService(
 
         return top;
     }
-
-
-    private static string CacheKey(Guid id) => $"event:{id}";
-    private static string CacheKey(string key) => $"event:{key}";
 
     private static EventChanged ToChanged(Event @event, EventChangeType changeType) => new(
         @event.Id,

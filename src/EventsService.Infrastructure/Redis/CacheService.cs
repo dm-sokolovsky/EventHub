@@ -12,6 +12,12 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
 
     public async Task<T?> GetAsync<T>(string key)
     {
+        if (!redis.IsConnected)
+        {
+            _logger.LogWarning("Redis is unavailable, read key {key} was skipped", key);
+            return default;
+        }
+
         try
         {
             var cached = await _redis.StringGetAsync(key);
@@ -21,7 +27,7 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
 
             return JsonSerializer.Deserialize<T>(cached.ToString());
         }
-        catch (RedisException ex)
+        catch (Exception ex) when(ex is RedisException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis is unavailable, read key {key} was skipped", key);
             return default;
@@ -30,13 +36,19 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
 
     public async Task<bool> SetAsync<T>(string key, T value, TimeSpan expiration)
     {
+        if (!redis.IsConnected)
+        {
+            _logger.LogWarning("Redis is unavailable, key {key} was not cached", key);
+            return false;
+        }
+
         try
         {
             var json = JsonSerializer.Serialize(value);
 
             return await _redis.StringSetAsync(key, json, expiration);
         }
-        catch (RedisException ex)
+        catch (Exception ex) when(ex is RedisException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis is unavailable, key {key} was not cached", key);
             return false;
@@ -45,11 +57,17 @@ public sealed class CacheService(IConnectionMultiplexer redis, ILogger<CacheServ
 
     public async Task RemoveAsync(string key)
     {
+        if (!redis.IsConnected)
+        {
+            _logger.LogWarning("Redis is unavailable, key {key} was not invalidated", key);
+            return;
+        }
+
         try
         {
             await _redis.KeyDeleteAsync(key);
         }
-        catch (RedisException ex)
+        catch (Exception ex) when(ex is RedisException or RedisTimeoutException)
         {
             _logger.LogWarning(ex, "Redis is unavailable, key {key} was not invalidated", key);
         }

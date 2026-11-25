@@ -66,10 +66,10 @@ BookingsService не ходит в базу EventsService напрямую — �
 - `GET /api/events/{id}` и `GET /api/events/top` сначала смотрят в кэш; при промахе данные читаются из PostgreSQL и записываются в кэш с TTL 5 минут;
 - ключи: `event:{id}` для события, `event:top10` для топ-10 (сортировка по доле проданных мест: `(total_seats - available_seats) / total_seats`, считается в SQL);
 - инвалидация: `PUT`/`DELETE` удаляют ключ события и `event:top10` после сохранения в БД; консьюмер `booking-confirmed` (`BookingConfirmedHandler`) после резервирования мест тоже удаляет оба ключа — изменение мест через Kafka сбрасывает кэш события, не дожидаясь TTL;
-- кэш — оптимизация, а не часть операции: сбои Redis внутри `CacheService` перехватываются (`RedisException` → warning в лог), запрос деградирует до чтения из БД, а не падает с 500;
+- кэш — оптимизация, а не часть операции: сбои Redis внутри `CacheService` перехватываются (`RedisException` и `RedisTimeoutException` → warning в лог), запрос деградирует до чтения из БД, а не падает с 500;
 - в кэш пишется DTO `EventInfo`, а не доменная сущность (у `Event` приватные конструкторы — System.Text.Json её не десериализует).
 
-Регистрация в `Program.cs`: `IConnectionMultiplexer` и `ICacheService` — singleton'ы. Строка подключения — `Redis:ConnectionString` в appsettings, в Docker перекрывается переменной `Redis__ConnectionString` (`redis:6379`).
+Регистрация в `Program.cs`: `IConnectionMultiplexer` и `ICacheService` — singleton'ы. Подключение собирается через `ConfigurationOptions` с `AbortOnConnectFail = false`, поэтому сервис стартует и работает даже при недоступном Redis (чтение деградирует в БД). Строка подключения — `Redis:ConnectionString` в appsettings, в Docker перекрывается переменной `Redis__ConnectionString` (`redis:6379`).
 
 ## Быстрый старт через Docker
 

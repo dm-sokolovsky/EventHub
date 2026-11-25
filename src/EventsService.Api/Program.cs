@@ -73,7 +73,12 @@ builder.Services.AddHostedService<BookingConfirmedConsumer>();
 // Redis
 var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
                             ?? throw new InvalidOperationException("Не задана Redis:ConnectionString");
-builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+{
+    var options = ConfigurationOptions.Parse(redisConnectionString);
+    options.AbortOnConnectFail = false;
+    return ConnectionMultiplexer.Connect(options);
+});
 builder.Services.AddSingleton<ICacheService, CacheService>();
 
 var app = builder.Build();

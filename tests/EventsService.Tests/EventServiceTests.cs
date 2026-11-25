@@ -8,6 +8,7 @@ using EventsService.Infrastructure;
 using EventsService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace EventsService.Tests;
 
@@ -26,6 +27,8 @@ public sealed class EventServiceTests : IDisposable
             options.UseInMemoryDatabase(dbName));
         services.AddScoped<IEventRepository, EventRepository>();
         services.AddSingleton<IEventPublisher, FakeEventPublisher>();
+        services.AddSingleton<ICacheService, FakeCacheService>();
+        services.AddSingleton(Options.Create(new CacheOptions()));
         services.AddScoped<IEventService, EventService>();
 
         _serviceProvider = services.BuildServiceProvider();

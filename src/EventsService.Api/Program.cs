@@ -7,9 +7,11 @@ using EventsService.Application.Services;
 using EventsService.Application.Services.Abstractions;
 using EventsService.Infrastructure;
 using EventsService.Infrastructure.Kafka;
+using EventsService.Infrastructure.Redis;
 using EventsService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -56,6 +58,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<BookingConfirmedHandler>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -66,6 +69,19 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
 builder.Services.AddHostedService<KafkaTopicInitializer>();
 builder.Services.AddHostedService<BookingConfirmedConsumer>();  
+
+// Redis
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"]
+                            ?? throw new InvalidOperationException("Не задана Redis:ConnectionString");
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+{
+    var options = ConfigurationOptions.Parse(redisConnectionString);
+    options.AbortOnConnectFail = false;
+    return ConnectionMultiplexer.Connect(options);
+});
+builder.Services.AddSingleton<ICacheService, CacheService>();
+builder.Services.AddOptions<CacheOptions>()
+    .Bind(builder.Configuration.GetSection(CacheOptions.SectionName));
 
 var app = builder.Build();
 

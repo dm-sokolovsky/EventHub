@@ -10,4 +10,5 @@ public interface IEventRepository
     Task<(IReadOnlyList<Event>, int totalCount)> GetAllEventsAsync(EventFilter filter, int page = 1, int pageSize = 10, CancellationToken ct = default);
     Task<bool> DeleteByIdAsync(Guid id, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Event>> GetTopEventsAsync(int count, CancellationToken ct = default);
 }

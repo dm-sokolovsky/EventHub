@@ -4,20 +4,26 @@ using EventsService.Application.Repositories;
 using EventsService.Application.Services.Abstractions;
 using EventsService.Domain.Exceptions;
 using EventsService.Domain.Models;
+using Microsoft.Extensions.Options;
 
 namespace EventsService.Application.Services;
 
 public sealed class EventService(
     IEventRepository eventRepository,
     IEventPublisher eventPublisher,
-    ICacheService cacheService
+    ICacheService cacheService,
+    IOptions<CacheOptions> cacheOptions
         ) : IEventService
 {
+    private readonly CacheOptions _cacheOptions = cacheOptions.Value;
+
     public async Task<EventInfo> CreateEventAsync(CreateEvent request, CancellationToken cancellationToken = default)
     {
         var @event = Event.Create(request.Title, request.StartAt, request.EndAt, request.TotalSeats, request.Description);
 
         await eventRepository.AddAsync(@event, cancellationToken);
+
+        await cacheService.RemoveAsync(CacheKeys.Top10);
 
         await eventPublisher.PublishAsync(ToChanged(@event, EventChangeType.Created), cancellationToken);
 
@@ -38,7 +44,7 @@ public sealed class EventService(
         
         var info = ToInfo(@event);
 
-        await cacheService.SetAsync(cacheKey, info, TimeSpan.FromMinutes(5));
+        await cacheService.SetAsync(cacheKey, info, _cacheOptions.EventTtl);
 
         return info;
     }
@@ -108,7 +114,7 @@ public sealed class EventService(
             .Select(ToInfo)
             .ToList();
 
-        await cacheService.SetAsync(cacheKey, top, TimeSpan.FromMinutes(5));
+        await cacheService.SetAsync(cacheKey, top, _cacheOptions.TopEventsTtl);
 
         return top;
     }

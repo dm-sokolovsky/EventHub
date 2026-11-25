@@ -80,6 +80,8 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     return ConnectionMultiplexer.Connect(options);
 });
 builder.Services.AddSingleton<ICacheService, CacheService>();
+builder.Services.AddOptions<CacheOptions>()
+    .Bind(builder.Configuration.GetSection(CacheOptions.SectionName));
 
 var app = builder.Build();
 

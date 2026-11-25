@@ -2,6 +2,7 @@ using EventsService.Application.Contracts;
 using EventsService.Application.Services;
 using EventsService.Application.Services.Abstractions;
 using EventsService.Domain.Models;
+using Microsoft.Extensions.Options;
 
 namespace EventsService.Tests;
 
@@ -9,13 +10,19 @@ public sealed class EventServiceCacheTests
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(5);
 
+    private static readonly CacheOptions TestCacheOptions = new()
+    {
+        EventTtl = TimeSpan.FromMinutes(30),
+        TopEventsTtl = TimeSpan.FromMinutes(2)
+    };
+
     private readonly FakeEventRepository _repository = new();
     private readonly FakeCacheService _cache = new();
     private readonly EventService _sut;
 
     public EventServiceCacheTests()
     {
-        _sut = new EventService(_repository, new FakeEventPublisher(), _cache);
+        _sut = new EventService(_repository, new FakeEventPublisher(), _cache, Options.Create(TestCacheOptions));
     }
 
     #region GetEventByIdAsync
@@ -129,6 +136,50 @@ public sealed class EventServiceCacheTests
 
         Assert.True(deleted);
         Assert.Null(await _cache.GetAsync<EventInfo>(CacheKeys.Event(@event.Id)));
+        Assert.Null(await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10));
+    }
+
+    #endregion
+
+    #region TTL и создание события
+
+    [Fact]
+    public async Task GetEventByIdAsync_CacheMiss_CachesWithConfiguredEventTtl()
+    {
+        var @event = CreateEvent();
+        _repository.Seed(@event);
+
+        await _sut.GetEventByIdAsync(@event.Id);
+
+        Assert.Equal(TestCacheOptions.EventTtl, _cache.Expirations[CacheKeys.Event(@event.Id)]);
+    }
+
+    [Fact]
+    public async Task GetTopEventsCachedAsync_CacheMiss_CachesWithConfiguredTopEventsTtl()
+    {
+        _repository.Seed(CreateEvent());
+
+        await _sut.GetTopEventsCachedAsync();
+
+        Assert.Equal(TestCacheOptions.TopEventsTtl, _cache.Expirations[CacheKeys.Top10]);
+    }
+
+    [Fact]
+    public async Task CreateEventAsync_CachedTop10_InvalidatesTop10()
+    {
+        _repository.Seed(CreateEvent());
+        await _sut.GetTopEventsCachedAsync(); // прогрев кэша топ-10
+        Assert.NotNull(await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10));
+
+        var request = new CreateEvent
+        {
+            Title = "Новое событие",
+            StartAt = DateTime.UtcNow.AddDays(3),
+            EndAt = DateTime.UtcNow.AddDays(3).AddHours(2),
+            TotalSeats = 50
+        };
+        await _sut.CreateEventAsync(request);
+
         Assert.Null(await _cache.GetAsync<List<EventInfo>>(CacheKeys.Top10));
     }
 

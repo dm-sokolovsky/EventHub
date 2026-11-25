@@ -3,6 +3,7 @@ using EventsService.Application.Contracts;
 using EventsService.Application.Services;
 using EventsService.Application.Services.Abstractions;
 using EventsService.Domain.Models;
+using Microsoft.Extensions.Options;
 
 namespace EventsService.Tests;
 
@@ -15,7 +16,7 @@ public sealed class BookingConfirmedHandlerTests
 
     public BookingConfirmedHandlerTests()
     {
-        _eventService = new EventService(_repository, new FakeEventPublisher(), _cache);
+        _eventService = new EventService(_repository, new FakeEventPublisher(), _cache, Options.Create(new CacheOptions()));
         _sut = new BookingConfirmedHandler(_repository, _cache);
     }
 
